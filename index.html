@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>なぞり</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --ai-akari: #1b2d5a;   /* 藍・明るいところ */
+    --ai: #0f1a38;         /* 藍 */
+    --ai-fukai: #070d1f;   /* 藍・深いところ */
+    --moji: #e9edf9;
+    --moji-usui: rgba(233, 237, 249, .58);
+    --sen: rgba(233, 237, 249, .14);
+    --bar: rgba(13, 22, 46, .66);
+    --mincho: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --maru: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--ai-fukai);
+    background-image: radial-gradient(130% 95% at 50% 38%, var(--ai-akari) 0%, var(--ai) 46%, var(--ai-fukai) 100%);
+    color: var(--moji);
+    font-family: var(--maru);
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #gd {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    pointer-events: none;
+    transition: opacity .9s ease;
+  }
+  #gd.fade { opacity: 0; }
+
+  #cv {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .hint {
+    position: fixed; left: 0; right: 0;
+    top: calc(env(safe-area-inset-top, 0px) + max(13vh, 86px));
+    margin: 0; padding: 0 24px;
+    text-align: center;
+    pointer-events: none;
+    transition: opacity 1.4s ease;
+  }
+  .hint p { margin: 0; }
+  .hint .main {
+    font-family: var(--mincho);
+    font-size: clamp(20px, 5.6vw, 28px);
+    letter-spacing: .14em;
+    line-height: 1.6;
+  }
+  .hint .sub {
+    margin-top: 10px;
+    font-size: 13px;
+    letter-spacing: .08em;
+    color: var(--moji-usui);
+  }
+  .hint.gone { opacity: 0; }
+
+  .topbar {
+    position: fixed;
+    left: 50%; transform: translateX(-50%);
+    top: 0;
+    margin-top: calc(env(safe-area-inset-top, 0px) + 10px);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .modes {
+    display: flex; gap: 2px;
+    padding: 4px;
+    background: var(--bar);
+    border: 1px solid var(--sen);
+    border-radius: 999px;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    transition: opacity .5s ease;
+  }
+  .modes button {
+    min-height: 40px;
+    padding: 0 10px;
+    border: 0; border-radius: 999px;
+    background: none; color: var(--moji-usui);
+    font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .06em;
+    white-space: nowrap; cursor: pointer;
+    transition: background-color .2s ease, color .2s ease;
+  }
+  .modes button[aria-checked="true"] { background: rgba(233, 237, 249, .15); color: var(--moji); }
+
+  .nav {
+    position: fixed;
+    left: 50%; transform: translateX(-50%);
+    bottom: 0;
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);
+    display: flex; align-items: center; gap: 8px;
+    transition: opacity .5s ease;
+  }
+  .nav[hidden] { display: none; }
+  .nav.solo button { visibility: hidden; }
+  .nav button {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--sen);
+    background: var(--bar); color: var(--moji);
+    font: inherit; font-size: 20px; line-height: 1;
+    cursor: pointer;
+  }
+  .nav .name { min-width: 132px; text-align: center; }
+  .nav .name b {
+    display: block;
+    font-family: var(--mincho); font-weight: 500;
+    font-size: 21px; letter-spacing: .16em; line-height: 1.3;
+  }
+  .nav .name span { font-size: 11px; letter-spacing: .1em; color: var(--moji-usui); white-space: nowrap; }
+  body.drawing .modes, body.drawing .nav { opacity: .22; }
+
+  .gear {
+    flex: none;
+    width: 44px; height: 44px;
+    display: grid; place-items: center;
+    padding: 0;
+    border: 1px solid var(--sen); border-radius: 50%;
+    background: var(--bar); color: var(--moji);
+    cursor: pointer;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    transition: opacity .5s ease;
+  }
+  body.drawing .gear { opacity: .22; }
+  .snote { margin: 6px 0 14px; font-size: 12px; line-height: 1.7; letter-spacing: .04em; color: var(--moji-usui); }
+  .sgrid {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    gap: 8px; align-items: center;
+  }
+  .shead { font-size: 11px; letter-spacing: .1em; color: var(--moji-usui); padding-left: 12px; }
+  .sname { font-size: 14px; font-weight: 700; letter-spacing: .06em; padding-right: 6px; white-space: nowrap; }
+  .sgrid select {
+    width: 100%; min-width: 0; height: 46px; padding: 0 8px;
+    border: 1px solid var(--sen); border-radius: 12px;
+    background: var(--ai-akari); color: var(--moji);
+    font: inherit; font-size: 14px;
+  }
+
+  .zset {
+    position: fixed;
+    left: 50%; transform: translateX(-50%);
+    top: 0;
+    margin-top: calc(env(safe-area-inset-top, 0px) + 66px);
+    min-height: 40px; padding: 0 16px;
+    border: 1px solid var(--sen); border-radius: 999px;
+    background: var(--bar); color: var(--moji);
+    font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .08em;
+    white-space: nowrap; cursor: pointer;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    transition: opacity .5s ease;
+  }
+  .zset[hidden] { display: none; }
+  body.drawing .zset { opacity: .22; }
+
+  .sheet-wrap {
+    position: fixed; inset: 0;
+    display: flex; align-items: flex-end; justify-content: center;
+    background: rgba(4, 8, 20, .6);
+  }
+  .sheet-wrap[hidden] { display: none; }
+  .sheet {
+    width: min(100%, 460px);
+    max-height: 90%;
+    overflow-y: auto;
+    padding: 20px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    background: var(--ai);
+    border: 1px solid var(--sen); border-bottom: 0;
+    border-radius: 22px 22px 0 0;
+  }
+  .sheet h2 {
+    margin: 0 0 16px;
+    font-family: var(--mincho); font-weight: 500;
+    font-size: 20px; letter-spacing: .14em; text-align: center;
+  }
+  .zhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .sheet h3, .zstart {
+    margin: 0;
+    font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--moji);
+  }
+  .sheet h3 span { margin-left: 6px; font-weight: 500; color: var(--moji-usui); }
+  .textbtn {
+    min-height: 40px; padding: 0 10px;
+    border: 0; border-radius: 10px; background: none;
+    color: var(--moji); font: inherit; font-size: 13px; font-weight: 700;
+    text-decoration: underline; text-underline-offset: 4px; cursor: pointer;
+  }
+  .zgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .zchip {
+    position: relative;
+    min-height: 56px; padding: 6px 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    border: 1px solid var(--sen); border-radius: 14px;
+    background: none; color: var(--moji-usui);
+    font: inherit; cursor: pointer;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+  }
+  .zchip b { font-size: 15px; letter-spacing: .06em; }
+  .zchip span { font-size: 10px; letter-spacing: .04em; }
+  .zchip[aria-pressed="true"] {
+    background: rgba(233, 237, 249, .14);
+    border-color: rgba(233, 237, 249, .7);
+    color: var(--moji);
+  }
+  .zchip[aria-pressed="true"]::after {
+    content: "✓";
+    position: absolute; top: 4px; right: 8px;
+    font-size: 11px; font-weight: 700;
+  }
+  .zstart { display: block; margin: 20px 0 8px; }
+  #zStart {
+    width: 100%; height: 48px; padding: 0 12px;
+    border: 1px solid var(--sen); border-radius: 14px;
+    background: var(--ai-akari); color: var(--moji);
+    font: inherit; font-size: 15px;
+  }
+  .done {
+    width: 100%; height: 50px; margin-top: 20px;
+    border: 0; border-radius: 14px;
+    background: var(--moji); color: var(--ai-fukai);
+    font: inherit; font-size: 15px; font-weight: 700; letter-spacing: .2em;
+    cursor: pointer;
+  }
+
+  .bar {
+    position: fixed;
+    left: 50%; transform: translateX(-50%);
+    bottom: 0;
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    width: min(calc(100% - 16px), 430px);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 6px 6px;
+    background: var(--bar);
+    border: 1px solid var(--sen);
+    border-radius: 22px;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    transition: opacity .5s ease;
+  }
+  body.drawing .bar { opacity: .22; }
+
+  .swatches { display: flex; gap: 2px; align-items: center; }
+  .sw {
+    width: 29px; height: 44px;
+    padding: 0; border: 0; background: none;
+    display: grid; place-items: center;
+    cursor: pointer; border-radius: 12px;
+  }
+  .sw i {
+    display: block; width: 22px; height: 22px; border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(233, 237, 249, 0);
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .sw[aria-checked="true"] i {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 2px var(--ai), 0 0 0 3.5px var(--moji);
+  }
+
+  .opt {
+    flex: 1 1 auto;
+    min-width: 44px; min-height: 44px;
+    padding: 4px 3px;
+    border: 0; border-radius: 14px;
+    background: none; color: var(--moji);
+    font: inherit; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px;
+    transition: background-color .2s ease;
+  }
+  .opt .k { font-size: 10px; letter-spacing: .1em; color: var(--moji-usui); }
+  .opt .v { font-size: 12px; font-weight: 700; letter-spacing: 0; white-space: nowrap; }
+  .opt:active { background: rgba(233, 237, 249, .1); }
+  @media (hover: hover) { .opt:hover { background: rgba(233, 237, 249, .07); } }
+  .opt:disabled { opacity: .35; cursor: default; }
+  .opt.clear { flex: 0 0 auto; padding: 4px 10px; border-left: 1px solid var(--sen); border-radius: 0 14px 14px 0; }
+
+  .sw:focus-visible, .opt:focus-visible, .modes button:focus-visible, .nav button:focus-visible, .zset:focus-visible, .zchip:focus-visible, .textbtn:focus-visible, #zStart:focus-visible, .gear:focus-visible, .sgrid select:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 1px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hint, .bar, .sw i, .modes, .nav, #gd, .zset, .zchip { transition: none; }
+  }
+  .done:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 3px;
+  }
+</style>
+</head>
+<body>
+<canvas id="gd" aria-hidden="true"></canvas>
+<canvas id="cv" aria-label="なぞると光の線が描けるキャンバス"></canvas>
+
+<div class="hint" id="hint">
+  <p class="main">画面をなぞってみてください</p>
+  <p class="sub">長押しすると波紋がにじみ、線が太くなります</p>
+</div>
+
+<div class="topbar">
+<div class="modes" id="modes" role="radiogroup" aria-label="なぞるお手本">
+  <button type="button" role="radio" data-m="0">自由</button>
+  <button type="button" role="radio" data-m="1">漢字</button>
+  <button type="button" role="radio" data-m="2">魔法陣</button>
+  <button type="button" role="radio" data-m="3">星座</button>
+  <button type="button" role="radio" data-m="4">蛍</button>
+</div>
+
+<button class="gear" id="setBtn" type="button" aria-label="設定">
+  <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+    <path d="M3 5.5h6M13 5.5h4M3 10h2M9 10h8M3 14.5h8M15 14.5h2"/>
+    <circle cx="11" cy="5.5" r="2"/><circle cx="7" cy="10" r="2"/><circle cx="13" cy="14.5" r="2"/>
+  </svg>
+</button>
+</div>
+<button class="zset" id="zsetBtn" type="button" hidden>表示する星座をえらぶ</button>
+
+<div class="nav" id="nav" hidden>
+  <button type="button" id="prevBtn" aria-label="前のお手本">‹</button>
+  <div class="name" aria-live="polite"><b id="gName"></b><span id="gSub"></span></div>
+  <button type="button" id="nextBtn" aria-label="次のお手本">›</button>
+</div>
+
+<div class="bar" id="bar" role="toolbar" aria-label="設定">
+  <div class="swatches" id="swatches" role="radiogroup" aria-label="色"></div>
+  <button class="opt" id="symBtn" type="button"><span class="k">対称</span><span class="v"></span></button>
+  <button class="opt" id="lifeBtn" type="button"><span class="k">余韻</span><span class="v"></span></button>
+  <button class="opt" id="sndBtn" type="button"><span class="k">音</span><span class="v">ガムラン</span></button>
+  <button class="opt clear" id="clearBtn" type="button"><span class="v">消す</span></button>
+</div>
+
+<div class="sheet-wrap" id="ssheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+    <h2 id="sTitle">設定</h2>
+    <h3>モードごとの初期値</h3>
+    <p class="snote">モードを切り替えると、ここで選んだ余韻と音で始まります。</p>
+    <div class="sgrid" id="sgrid"></div>
+    <button class="done" id="sDone" type="button">完了</button>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="zsheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="zTitle">
+    <h2 id="zTitle">星座の設定</h2>
+    <div class="zhead">
+      <h3>表示する星座 <span id="zCount"></span></h3>
+      <button class="textbtn" id="zAll" type="button">すべて表示</button>
+    </div>
+    <div class="zgrid" id="zgrid"></div>
+    <label class="zstart" for="zStart">はじめの星座</label>
+    <select id="zStart"></select>
+    <button class="done" id="zDone" type="button">完了</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- 設定値 ---------- */
+  const PALETTES = [
+    { name: '夜明け', colors: ['#4f7dff', '#9a6bff', '#ff6fa8', '#ffb56b'] },
+    { name: '蛍',     colors: ['#c8ff6e', '#5ff0b8', '#3fd0e0', '#f1ffa6'] },
+    { name: '藤',     colors: ['#b9a2ff', '#7fb0ff', '#f3b8ff', '#8f7bff'] },
+    { name: '金魚',   colors: ['#ff5548', '#ff9a52', '#ffd9a3', '#ff6f91'] },
+  ];
+  const SYMS  = ['なし', '左右', '万華鏡', '螺旋'];
+  // 螺旋:描いた線を、少しずつ回しながら縮めた写しを重ねる。中心へ巻き込む渦になる
+  const SPIRAL = { turn: 32 * Math.PI / 180, shrink: 0.84, inner: 11, outer: 3 };
+  const LIVES = [
+    { label: '短め', sec: 3.5 }, { label: 'ふつう', sec: 8 }, { label: '長め', sec: 17 },
+    { label: '超長め', sec: 45 }, { label: '消さない', sec: Infinity }
+  ];
+
+  const STEPS = 48;          // 1パレットあたりの色の段階
+  const SPR = 128;           // 光の粒スプライトの大きさ
+  const MAX_STAMPS = 11000;  // 粒の上限(超えた分は古い順にすっと消す)
+  const BASE_ALPHA = 0.32;
+  const WIPE_SEC = 0.7;
+  const STORE_KEY = 'nazori:v1';
+
+  /* ---------- お手本(100×100 の枠に描いた線) ---------- */
+  function pairs(n) { const o = []; for (let i = 0; i < n.length; i += 2) o.push([n[i], n[i + 1]]); return o; }
+  const L = (...n) => ({ c: false, p: pairs(n) });   // 折れ線
+  const C = (...n) => ({ c: true, p: pairs(n) });    // なめらかな曲線
+  function circ(r, cx = 50, cy = 50) {
+    const p = [];
+    for (let i = 0; i <= 72; i++) {
+      const a = i / 72 * Math.PI * 2 - Math.PI / 2;
+      p.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+    return { c: false, p };
+  }
+  function star(r, n, k, rot = 0, cx = 50, cy = 50) {   // 一筆書きの星形・多角形
+    const p = [];
+    for (let i = 0; i <= n; i++) {
+      const a = -Math.PI / 2 + rot + ((i * k) % n) / n * Math.PI * 2;
+      p.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+    return { c: false, p };
+  }
+  const GUIDES = [
+    null,
+    { items: [
+      { name: '山', sub: 'やま', s: [L(50,14, 50,80), L(20,42, 20,80, 80,80), L(80,42, 80,82)] },
+      { name: '川', sub: 'かわ', s: [C(28,16, 28,50, 24,70, 14,86), L(51,24, 51,74), L(76,14, 76,88)] },
+      { name: '人', sub: 'ひと', s: [C(52,14, 48,40, 36,64, 14,86), C(50,36, 58,56, 70,74, 88,86)] },
+      { name: '大', sub: 'だい', s: [L(14,38, 86,38), C(50,12, 49,40, 38,66, 14,88), C(51,40, 58,60, 70,76, 88,88)] },
+      { name: '木', sub: 'き', s: [L(12,34, 88,34), L(50,10, 50,90), C(49,36, 40,54, 28,68, 12,78), C(51,36, 60,54, 72,68, 88,78)] },
+      { name: '火', sub: 'ひ', s: [L(22,34, 30,52), L(78,30, 66,50), C(50,10, 50,40, 40,66, 14,88), C(51,44, 58,62, 70,78, 88,88)] },
+      { name: '土', sub: 'つち', s: [L(26,42, 74,42), L(50,14, 50,84), L(10,84, 90,84)] },
+      { name: '日', sub: 'ひ', s: [L(26,14, 26,86), L(26,14, 74,14, 74,86), L(26,50, 74,50), L(26,86, 74,86)] },
+      { name: '月', sub: 'つき', s: [C(30,12, 30,50, 28,70, 16,88), L(30,12, 74,12, 74,88, 66,83), L(30,36, 74,36), L(30,60, 74,60)] },
+      { name: '水', sub: 'みず', s: [L(50,10, 50,88, 40,80), L(14,38, 40,38, 30,62, 16,78), L(82,24, 56,46), C(54,44, 62,62, 74,76, 88,84)] },
+    ] },
+    { items: [
+      { name: '小さい丸', sub: '', s: [circ(22)] },
+      { name: '大きい丸', sub: '', s: [circ(46)] },
+      { name: '小さい三角', sub: '', s: [star(26, 3, 1, 0, 50, 56)] },
+      { name: '大きい三角', sub: '', s: [star(50, 3, 1, 0, 50, 62)] },
+      { name: '小さい四角', sub: '', s: [star(28, 4, 1, Math.PI / 4)] },
+      { name: '大きい四角', sub: '', s: [star(62, 4, 1, Math.PI / 4)] },
+      { name: '小さい星', sub: '', s: [star(26, 5, 2, 0, 50, 52)] },
+      { name: '大きい星', sub: '', s: [star(50, 5, 2, 0, 50, 54)] },
+      { name: '六芒星', sub: '', s: [circ(48), circ(41), star(41, 3, 1), star(41, 3, 1, Math.PI), circ(13)] },
+      { name: '五芒星', sub: '', s: [circ(48), circ(42), star(42, 5, 2), circ(10)] },
+      { name: '八芒星', sub: '', s: [circ(48), star(44, 4, 1), star(44, 4, 1, Math.PI / 4), circ(18)] },
+      { name: '錬成陣', sub: '', s: [circ(48), star(48, 3, 1), circ(24), star(24, 4, 1, Math.PI / 4), circ(8)] },
+      { name: '七芒星', sub: '', s: [circ(48), circ(43), star(43, 7, 3), circ(9)] },
+    ] },
+    { items: [
+      { name: '牡羊座', sub: 'おひつじ座', s: [C(26,46, 18,34, 22,20, 34,14, 45,22, 50,42, 50,88), C(74,46, 82,34, 78,20, 66,14, 55,22, 50,42)] },
+      { name: '牡牛座', sub: 'おうし座', s: [circ(22, 50, 64), C(20,12, 28,32, 50,42, 72,32, 80,12)] },
+      { name: '双子座', sub: 'ふたご座', s: [C(18,14, 50,24, 82,14), C(18,86, 50,76, 82,86), L(38,21, 38,79), L(62,21, 62,79)] },
+      { name: '蟹座', sub: 'かに座', s: [circ(11, 30, 38), C(30,27, 52,20, 72,24, 86,38), circ(11, 70, 62), C(70,73, 48,80, 28,76, 14,62)] },
+      { name: '獅子座', sub: 'しし座', s: [circ(11, 30, 60), C(38,52, 30,32, 44,14, 62,20, 64,40, 56,62, 60,80, 74,86, 84,76)] },
+      { name: '乙女座', sub: 'おとめ座', s: [L(18,20, 18,78), C(18,32, 26,20, 36,22, 38,36, 38,78), C(38,32, 46,20, 56,22, 58,36, 58,70, 64,84), C(58,48, 70,38, 82,46, 78,62, 62,78, 50,88)] },
+      { name: '天秤座', sub: 'てんびん座', s: [L(14,80, 86,80), L(14,62, 36,62), C(36,62, 30,48, 34,30, 50,24, 66,30, 70,48, 64,62), L(64,62, 86,62)] },
+      { name: '蠍座', sub: 'さそり座', s: [L(16,22, 16,74), C(16,32, 24,20, 34,22, 36,36, 36,74), C(36,32, 44,20, 54,22, 56,36, 56,68, 62,80, 74,80, 87,60), L(75,60, 87,60, 87,72)] },
+      { name: '射手座', sub: 'いて座', s: [L(18,84, 82,18), L(52,18, 82,18, 82,48), L(28,46, 54,72)] },
+      { name: '山羊座', sub: 'やぎ座', s: [C(12,26, 22,20, 28,32, 30,62), C(30,40, 38,22, 52,22, 56,40, 56,70, 50,84, 40,86), C(56,62, 66,50, 80,54, 82,66, 74,76, 62,74, 56,62)] },
+      { name: '水瓶座', sub: 'みずがめ座', s: [L(12,42, 26,28, 38,42, 52,28, 64,42, 78,28, 88,40), L(12,68, 26,54, 38,68, 52,54, 64,68, 78,54, 88,66)] },
+      { name: '魚座', sub: 'うお座', s: [C(22,12, 36,30, 38,50, 36,70, 22,88), C(78,12, 64,30, 62,50, 64,70, 78,88), L(18,50, 82,50)] },
+    ] },
+  ];
+  const HIT = 15;           // なぞったと見なす距離(px)
+  const HOLD_SEC = 0.3;     // 長押しと見なすまでの時間
+  const CHARGE_MAX = 3.5;   // ためられる上限(太さは 1 + ため×3.5 倍)
+  const DONE_RATIO = 0.93;  // これだけなぞれば完成
+
+  const MODE_NAMES = ['自由', '漢字', '魔法陣', '星座', '蛍'];
+  const S = {
+    pal: 0, sym: 0, mode: 0, idx: [0, 0, 0, 0], zShow: Array(12).fill(true), zStart: 0,
+    // モードごとの初期値(設定で変えられる)。音は 0 オフ、1 ガムラン、2 琴、3 パッド、4 ランダム
+    mLife: [1, 1, 1, 1, 1],   // 余韻:どのモードも「ふつう」
+    mSnd: [1, 2, 1, 1, 2],    // 音:漢字と蛍は琴、自由・魔法陣・星座はガムラン
+    life: 1, snd: 1           // いまの余韻と音(モードを切り替えると、そのモードの初期値に戻る)
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if (saved) {
+      if (saved.pal >= 0 && saved.pal < PALETTES.length) S.pal = saved.pal | 0;
+      if (saved.sym >= 0 && saved.sym < SYMS.length) S.sym = saved.sym | 0;
+      for (let m = 0; m < MODE_NAMES.length; m++) {
+        if (Array.isArray(saved.mLife) && saved.mLife[m] >= 0 && saved.mLife[m] < LIVES.length) S.mLife[m] = saved.mLife[m] | 0;
+        if (Array.isArray(saved.mSnd) && saved.mSnd[m] >= 0 && saved.mSnd[m] <= 4) S.mSnd[m] = saved.mSnd[m] | 0;
+      }
+      if (Array.isArray(saved.zShow) && saved.zShow.length === 12 && saved.zShow.some(Boolean)) S.zShow = saved.zShow.map(Boolean);
+      if (saved.zStart >= 0 && saved.zStart < 12) S.zStart = saved.zStart | 0;
+      if (!S.zShow[S.zStart]) S.zStart = S.zShow.indexOf(true);
+      if (saved.mode >= 0 && saved.mode <= 4) S.mode = saved.mode | 0;
+      if (Array.isArray(saved.idx)) {
+        for (let m = 1; m < GUIDES.length; m++) {
+          const v = saved.idx[m] | 0;
+          if (v >= 0 && v < GUIDES[m].items.length) S.idx[m] = v;
+        }
+      }
+    }
+  } catch (e) { /* 保存が使えなくてもそのまま動く */ }
+  S.life = S.mLife[S.mode]; S.snd = S.mSnd[S.mode];
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ pal: S.pal, sym: S.sym, mode: S.mode, idx: S.idx, zShow: S.zShow, zStart: S.zStart, mLife: S.mLife, mSnd: S.mSnd })); } catch (e) {}
+  }
+
+  /* ---------- キャンバス ---------- */
+  const gd = document.getElementById('gd');        // お手本用
+  const gctx = gd.getContext('2d');
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const layer = document.createElement('canvas');   // 対称モード用の下描き
+  const lctx = layer.getContext('2d');
+  let bake = document.createElement('canvas');      // 「消さない」線を焼き付けておく
+  let bctx = bake.getContext('2d');
+  let bakeOld = document.createElement('canvas');   // 「消す」で消えていく途中の線
+  let boctx = bakeOld.getContext('2d');
+  let bakeHas = false, bakeDirty = false, oldAlive = false;
+  let W = 0, H = 0, dpr = 1;
+
+  function sizeCanvas() {
+    let keep = null;
+    const oldDpr = dpr;
+    if (bakeHas) {   // 画面の大きさが変わっても、消さない線は残す
+      keep = document.createElement('canvas');
+      keep.width = bake.width; keep.height = bake.height;
+      keep.getContext('2d').drawImage(bake, 0, 0);
+    }
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    for (const c of [cv, layer, gd, bake, bakeOld]) {
+      c.width = Math.max(1, Math.round(W * dpr));
+      c.height = Math.max(1, Math.round(H * dpr));
+    }
+    if (keep) {
+      const sc = dpr / oldDpr;
+      bctx.setTransform(1, 0, 0, 1, 0, 0);
+      bctx.globalCompositeOperation = 'source-over'; bctx.globalAlpha = 1;
+      bctx.drawImage(keep, 0, 0, keep.width * sc, keep.height * sc);
+    }
+    oldAlive = false;
+    settle = 2;
+    layoutGuide();
+    drawGuide();
+  }
+
+  /* ---------- 光の粒スプライト ---------- */
+  function hex(h) {
+    const n = parseInt(h.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function makeSprite(r, g, b, fat) {
+    const c = document.createElement('canvas');
+    c.width = c.height = SPR;
+    const x = c.getContext('2d');
+    const h = SPR / 2;
+    const wr = Math.round(r + (255 - r) * 0.68), wg = Math.round(g + (255 - g) * 0.68), wb = Math.round(b + (255 - b) * 0.68);
+    const gr = x.createRadialGradient(h, h, 0, h, h, h);
+    if (fat) {   // 太い線用:芯だけでなく、幅いっぱいに光が乗る
+      gr.addColorStop(0,    `rgba(${wr},${wg},${wb},1)`);
+      gr.addColorStop(0.3,  `rgba(${r},${g},${b},.85)`);
+      gr.addColorStop(0.55, `rgba(${r},${g},${b},.4)`);
+      gr.addColorStop(0.8,  `rgba(${r},${g},${b},.08)`);
+      gr.addColorStop(1,    `rgba(${r},${g},${b},0)`);
+    } else {
+      gr.addColorStop(0,    `rgba(${wr},${wg},${wb},1)`);
+      gr.addColorStop(0.18, `rgba(${r},${g},${b},.72)`);
+      gr.addColorStop(0.5,  `rgba(${r},${g},${b},.15)`);
+      gr.addColorStop(1,    `rgba(${r},${g},${b},0)`);
+    }
+    x.fillStyle = gr;
+    x.fillRect(0, 0, SPR, SPR);
+    c._col = `${r},${g},${b}`;
+    return c;
+  }
+  const spriteSets = [], fatSets = [];
+  function sprites(p, fat) {
+    const store = fat ? fatSets : spriteSets;
+    if (store[p]) return store[p];
+    const cols = PALETTES[p].colors.map(hex), n = cols.length, set = [];
+    for (let i = 0; i < STEPS; i++) {
+      const t = i / STEPS * n, a = Math.floor(t) % n, b = (a + 1) % n, f = t - Math.floor(t);
+      set.push(makeSprite(
+        Math.round(cols[a][0] + (cols[b][0] - cols[a][0]) * f),
+        Math.round(cols[a][1] + (cols[b][1] - cols[a][1]) * f),
+        Math.round(cols[a][2] + (cols[b][2] - cols[a][2]) * f),
+        fat
+      ));
+    }
+    return (store[p] = set);
+  }
+
+  /* ---------- 軌跡 ---------- */
+  let stamps = [];
+  const pointers = new Map();
+  let wipeT = -1e9;
+  let settle = 2;   // 粒がなくなったあと、画面を描き直す残り回数
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  const nowSec = () => performance.now() / 1000;
+
+  function addSpark(x, y, P, now, burst) {
+    const set = sprites(P.pal);
+    const ang = Math.random() * Math.PI * 2;
+    const v = (burst ? 22 : 10) + Math.random() * 34;
+    stamps.push({
+      spark: true, x, y,
+      vx: Math.cos(ang) * v, vy: Math.sin(ang) * v,
+      born: now, life: 1.2 + Math.random() * 1.6,
+      size: 7 + Math.random() * 7, k: 1,
+      img: set[(Math.floor(P.cpos) + ((Math.random() * 8) | 0)) % STEPS],
+      ph: Math.random() * 6.28
+    });
+  }
+  function addStamp(x, y, P, now) {
+    // 細い線は「芯+にじみ」、太い線は「幅いっぱいの光」。その間はなめらかに混ぜる
+    const ci = Math.floor(P.cpos) % STEPS;
+    const c1 = Math.min(1, P.charge || 0);
+    const t = clamp((P.size - 50) / 40, 0, 1);
+    const life = P.real ? LIVES[S.life].sec : Math.min(LIVES[S.life].sec, 8);   // お手本の一筆は必ず消える
+    const k1 = (1 + c1 * 0.7) * (1 - t), k2 = 0.72 * (1 + c1 * 0.3) * t;
+    if (life === Infinity) {
+      if (t < 1) bakeStamp(sprites(P.pal)[ci], x, y, P.size, BASE_ALPHA * k1);
+      if (t > 0) bakeStamp(sprites(P.pal, true)[ci], x, y, P.size, BASE_ALPHA * k2);
+    } else {
+      if (t < 1) stamps.push({ spark: false, x, y, born: now, life, size: P.size, k: k1, img: sprites(P.pal)[ci], ph: P.phase });
+      if (t > 0) stamps.push({ spark: false, x, y, born: now, life, size: P.size, k: k2, img: sprites(P.pal, true)[ci], ph: P.phase });
+    }
+    if (Math.random() < 0.045) addSpark(x, y, P, now, false);
+    if (G && !G.done && G.ready && P.real) checkGuide(x, y, P, now);
+  }
+  function bakeStamp(img, x, y, d, al) {
+    bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    bctx.globalCompositeOperation = 'lighter';
+    bctx.globalAlpha = al;
+    bctx.drawImage(img, x - d / 2, y - d / 2, d, d);
+    bakeHas = true; bakeDirty = true;
+  }
+  function wipeAll(dur = WIPE_SEC) {   // いまある線をすべて、ふわっと消す
+    wipeT = nowSec(); wipeDur = dur;
+    if (bakeHas) {
+      [bake, bakeOld] = [bakeOld, bake];
+      [bctx, boctx] = [boctx, bctx];
+      bctx.setTransform(1, 0, 0, 1, 0, 0);
+      bctx.clearRect(0, 0, bake.width, bake.height);
+      bakeHas = false; oldAlive = true;
+    }
+    settle = 2;
+  }
+  function addRing(P, now) {   // 長押しでにじみ出る波紋
+    const r0 = P.size * 0.3;
+    stamps.push({
+      ring: true, spark: false, x: P.bx, y: P.by,
+      born: now, life: 3.2, k: 1, wk: Math.max(1, P.size / 70),
+      r0, r1: r0 + 50 + Math.min(2.5, P.charge) * 70,
+      col: sprites(P.pal)[Math.floor(P.cpos) % STEPS]._col
+    });
+  }
+
+  /* ---------- お手本をなぞる ---------- */
+  let G = null;          // いま表示しているお手本
+  let wipeDur = WIPE_SEC;
+  // 完成してから次のお手本をなぞれるようになるまでの流れ(秒)
+  const SEQ = {
+    emph: 1.7,    // なぞった線が、ゆっくり明るく強調される
+    hold: 0.5,    // いちばん明るいところで、ひと呼吸
+    fade: 2.8,    // 淡く、ゆっくり消えていく(消えかけたところで完成音)
+    pause: 0.9,   // 何もない間
+    appear: 2.2   // 次のお手本が、ゆっくり現れる(現れきるまではなぞれない)
+  };
+
+  function smooth(p) {   // 点を通るなめらかな曲線にする
+    if (p.length < 3) return p;
+    const out = [];
+    for (let i = 0; i < p.length - 1; i++) {
+      const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2;
+      for (let j = 0; j < 14; j++) {
+        const t = j / 14, t2 = t * t, t3 = t2 * t;
+        out.push([0, 1].map((a) => 0.5 * (2 * p1[a] + (p2[a] - p0[a]) * t +
+          (2 * p0[a] - 5 * p1[a] + 4 * p2[a] - p3[a]) * t2 + (3 * p1[a] - p0[a] - 3 * p2[a] + p3[a]) * t3)));
+      }
+    }
+    out.push(p[p.length - 1]);
+    return out;
+  }
+  function order(mode) {   // そのモードで、お手本が出てくる順番
+    if (mode !== 3) return GUIDES[mode].items.map((_, i) => i);
+    const out = [];
+    for (let k = 0; k < 12; k++) { const i = (S.zStart + k) % 12; if (S.zShow[i]) out.push(i); }
+    return out;
+  }
+  function stepIndex(mode, d) {
+    const o = order(mode), p = o.indexOf(S.idx[mode]);
+    return p < 0 ? o[0] : o[(p + d + o.length) % o.length];
+  }
+  function buildGuide(appear = false, now = 0) {
+    gd.style.transition = 'none';
+    gd.classList.toggle('fade', appear);   // ゆっくり現れるときは、透明から始める
+    if (S.mode === 0 || S.mode === 4) { G = null; gd.classList.remove('fade'); drawGuide(); return; }
+    const item = GUIDES[S.mode].items[S.idx[S.mode]];
+    const paths = item.s.map((st) => st.c ? smooth(st.p) : st.p);
+    const pts = [];
+    const SP = 1;     // 判定点の間隔(枠の単位)
+    for (const path of paths) {
+      let need = 0;
+      for (let i = 0; i < path.length - 1; i++) {
+        const a = path[i], b = path[i + 1];
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        while (need <= len) {
+          const t = len ? need / len : 0;
+          pts.push({ ux: a[0] + (b[0] - a[0]) * t, uy: a[1] + (b[1] - a[1]) * t, x: 0, y: 0, lit: false, img: null });
+          need += SP;
+        }
+        need -= len;
+      }
+    }
+    G = { item, paths, pts, lit: 0, done: false, sc: 1, ox: 0, oy: 0,
+          ready: !appear, appearAt: now, level: 0, stage: 0, doneAt: 0, acc: 0, pal: 0 };
+    layoutGuide();
+    drawGuide();
+    if (appear) {
+      void gd.offsetWidth;   // 透明な状態をいったん確定させてから、ゆっくり現す
+      gd.style.transition = 'opacity ' + SEQ.appear + 's ease';
+      gd.classList.remove('fade');
+    }
+  }
+  function layoutGuide() {
+    if (!G) return;
+    const size = clamp(Math.min(W - 44, H - 280), 150, 430);
+    G.sc = size / 100;
+    G.ox = W / 2 - size / 2;
+    G.oy = Math.max(104, H / 2 - 39 - size / 2);
+    for (const pt of G.pts) { pt.x = G.ox + pt.ux * G.sc; pt.y = G.oy + pt.uy * G.sc; }
+  }
+  function litStamp(pt, alpha, d = 26) {
+    gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    gctx.globalCompositeOperation = 'lighter';
+    gctx.globalAlpha = alpha;
+    gctx.drawImage(pt.img, pt.x - d / 2, pt.y - d / 2, d, d);
+  }
+  function drawGuide() {
+    gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    gctx.globalCompositeOperation = 'source-over';
+    gctx.globalAlpha = 1;
+    gctx.clearRect(0, 0, W, H);
+    if (!G) return;
+    const X = (u) => G.ox + u * G.sc, Y = (u) => G.oy + u * G.sc;
+    const lv = G.level;   // 完成後の強調(0〜1)。強調が進むほど、下書きの線と番号は引いていく
+    gctx.lineCap = 'round'; gctx.lineJoin = 'round';
+    for (const pass of [{ w: 16, c: 'rgba(233,237,249,.055)' }, { w: 2, c: 'rgba(233,237,249,.32)' }]) {
+      gctx.globalAlpha = 1 - lv * 0.85;
+      gctx.lineWidth = pass.w; gctx.strokeStyle = pass.c;
+      for (const path of G.paths) {
+        gctx.beginPath();
+        gctx.moveTo(X(path[0][0]), Y(path[0][1]));
+        for (let i = 1; i < path.length; i++) gctx.lineTo(X(path[i][0]), Y(path[i][1]));
+        gctx.stroke();
+      }
+    }
+    if (S.mode === 1) {   // 漢字は書き順の番号を書きはじめに添える
+      gctx.font = '11px "Zen Maru Gothic", "Hiragino Sans", sans-serif';
+      gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
+      gctx.fillStyle = 'rgba(233,237,249,.55)';
+      gctx.globalAlpha = 1 - lv;
+      G.paths.forEach((path, i) => {
+        const a = path[0], b = path[1];
+        const dl = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        gctx.fillText(String(i + 1), X(a[0]) - (b[0] - a[0]) / dl * 14, Y(a[1]) - (b[1] - a[1]) / dl * 14);
+      });
+    }
+    for (const pt of G.pts) if (pt.lit) litStamp(pt, 0.3 + lv * 0.2);
+    if (lv > 0.01) {   // 強調:線のまわりに、大きくやわらかい光が広がる
+      const d = 26 * (1.6 + lv * 1.9);
+      for (let i = 0; i < G.pts.length; i += 2) { const pt = G.pts[i]; if (pt.lit) litStamp(pt, 0.11 * lv, d); }
+    }
+  }
+  function checkGuide(x, y, P, now) {
+    const hr = clamp(P.size * 0.4, HIT, 60);   // 太い線ほど広くなぞれる
+    const r2 = hr * hr;
+    const img = sprites(P.pal)[Math.floor(P.cpos) % STEPS];
+    for (const pt of G.pts) {
+      if (pt.lit) continue;
+      const dx = pt.x - x, dy = pt.y - y;
+      if (dx * dx + dy * dy <= r2) { pt.lit = true; pt.img = img; G.lit++; litStamp(pt, 0.3); }
+    }
+    if (G.lit >= G.pts.length * DONE_RATIO) completeGuide(P, now);
+  }
+  function completeGuide(P, now) {
+    G.done = true; G.doneAt = now; G.stage = 0; G.level = 0; G.acc = 0; G.pal = P.pal;
+    const set = sprites(P.pal);
+    G.pts.forEach((pt, i) => {
+      if (!pt.lit) { pt.lit = true; pt.img = set[Math.floor(i / 3) % STEPS]; G.lit++; }
+    });
+    drawGuide();
+    gSub.textContent = 'できました';
+  }
+  // 毎フレーム呼ばれて、完成後の流れを時間に沿って進める
+  function runSequence(now, dt) {
+    if (!G) return;
+    if (!G.done) {
+      if (!G.ready && now - G.appearAt >= SEQ.appear) G.ready = true;   // 現れきったら、なぞれるようになる
+      return;
+    }
+    const e = now - G.doneAt;
+    if (G.stage === 0) {            // ゆっくり強調
+      const q = Math.min(1, e / SEQ.emph);
+      G.level = q * q * (3 - 2 * q);
+      drawGuide();
+      if (!reduced) {               // 光の粒が、線から少しずつこぼれる
+        G.acc += dt * 26 * (0.3 + G.level);
+        const fake = { pal: G.pal, cpos: 0 };
+        while (G.acc >= 1) {
+          G.acc--;
+          const pt = G.pts[(Math.random() * G.pts.length) | 0];
+          fake.cpos = Math.random() * STEPS;
+          addSpark(pt.x, pt.y, fake, now, false);
+        }
+      }
+      if (q >= 1) G.stage = 1;
+    } else if (G.stage === 1) {     // ひと呼吸おいて、淡く消えはじめる(なぞった線もいっしょに)
+      if (e >= SEQ.emph + SEQ.hold) {
+        gd.style.transition = 'opacity ' + SEQ.fade + 's ease-in-out';
+        gd.classList.add('fade');
+        wipeAll(SEQ.fade);
+        G.stage = 2;
+      }
+    } else if (G.stage === 2) {     // 消えかけたところで、完成音
+      if (e >= SEQ.emph + SEQ.hold + SEQ.fade * 0.7) {
+        pon();
+        shuffleInst();              // 音が「ランダム」なら、ここで次の楽器に替わる
+        G.stage = 3;
+      }
+    } else if (e >= SEQ.emph + SEQ.hold + SEQ.fade + SEQ.pause) {   // 間をおいて、次のお手本へ
+      const mode = S.mode;
+      S.idx[mode] = stepIndex(mode, 1);
+      save(); buildGuide(true, now); syncUI();
+    }
+  }
+
+  function startStroke(id, x, y, now, str = null) {
+    const old = pointers.get(id);
+    if (old && old.pad) { padEnd(old.pad); old.pad = null; }
+    const P = {
+      down: true, tx: x, ty: y, bx: x, by: y, px: x, py: y, mx: x, my: y,
+      carry: 0, speed: 0, size: 30,
+      cpos: Math.random() * STEPS, phase: Math.random() * 6.28,
+      pal: S.pal, real: id !== 'demo',
+      hold: 0, charge: 0, blot: null, ripT: 0,
+      zone: zoneForY(y), sdist: 0, lastHit: now, step: 0, str,
+      pad: null, pz: -1, padT: 0, x0: x,
+      path: [[x, y]]
+    };
+    pointers.set(id, P);
+    addStamp(x, y, P, now);
+    for (let i = 0; i < 5; i++) addSpark(x, y, P, now, true);
+    if (P.real) hit(P.zone, velOf(str === null ? 0.5 : str));
+    return P;
+  }
+  function endStroke(id) {
+    const P = pointers.get(id);
+    if (P) P.down = false;
+  }
+
+  // 筆先は指を少し遅れて追いかける。その道筋に光の粒を等間隔で置いていく
+  function advance(id, P, now, dt) {
+    const k = 1 - Math.pow(0.7, dt * 60);
+    P.bx += (P.tx - P.bx) * k;
+    P.by += (P.ty - P.by) * k;
+    const mx = (P.px + P.bx) / 2, my = (P.py + P.by) / 2;
+    const len = Math.hypot(P.px - P.mx, P.py - P.my) + Math.hypot(mx - P.px, my - P.py);
+    const moving = len > 0.05;
+    if (moving) P.speed += (len / dt - P.speed) * 0.18; else P.speed *= 0.9;
+
+    // 長押しで筆に光をためる。ためた分は、描いた距離に応じて少しずつ減っていく
+    const still = P.down && P.real && P.speed < 35;
+    if (still) {
+      P.hold += dt;
+      if (P.hold > HOLD_SEC) P.charge = Math.min(CHARGE_MAX, P.charge + dt / 2.6);
+    } else {
+      P.hold = 0;
+      if (moving) P.charge = Math.max(0, P.charge - len / 1700);
+    }
+    // ゆっくりは太く、速くは細く。ためるほど太く
+    const want = clamp(36 - P.speed * 0.014 * (1 - Math.min(1, P.charge) * 0.6), 15, 36) * (1 + P.charge * 3.5);
+
+    if (still && P.hold > HOLD_SEC) {
+      P.size += (want - P.size) * (1 - Math.pow(0.9, dt * 60));
+      P.cpos += dt * 3;
+      const img = sprites(P.pal)[Math.floor(P.cpos) % STEPS];
+      if (!P.blot) {
+        P.blot = { spark: false, x: P.bx, y: P.by, born: now, life: LIVES[S.life].sec, size: P.size, k: 1.3, img, ph: P.phase };
+        stamps.push(P.blot);
+        P.ripT = 0;
+      }
+      P.blot.x = P.bx; P.blot.y = P.by; P.blot.born = now;
+      P.blot.size = P.size * 1.3; P.blot.img = img;
+      P.ripT -= dt;
+      if (P.ripT <= 0) {
+        P.ripT = 0.5; addRing(P, now);
+        P.step++;
+        if (P.step % 2 === 1) hit(Math.max(0, P.zone - 5), 0.15, 0, 1.7);   // 波紋に合わせて低い音が鳴る
+      }
+      if (G && !G.done && G.ready) checkGuide(P.bx, P.by, P, now);
+    } else {
+      if (P.blot && P.blot.life === Infinity) {   // 「消さない」なら、長押しの光もその場に残す
+        bakeStamp(P.blot.img, P.blot.x, P.blot.y, P.blot.size, BASE_ALPHA * P.blot.k);
+        P.blot.born = -1e9; P.blot.life = 1;
+      }
+      P.blot = null;
+    }
+
+    if (moving) {
+      P.size += (want - P.size) * 0.12;
+      const step = Math.max(2, P.size * 0.12);
+      let d = P.carry;
+      while (d <= len) {
+        const t = d / len, u = 1 - t;
+        P.cpos += step / 9;
+        addStamp(
+          u * u * P.mx + 2 * u * t * P.px + t * t * mx,
+          u * u * P.my + 2 * u * t * P.py + t * t * my,
+          P, now
+        );
+        d += step;
+      }
+      P.carry = d - len;
+      if (P.real) soundMove(P, len, now);
+      if (P.real && S.mode === 4) trackLoop(P, now);
+      P.mx = mx; P.my = my; P.px = P.bx; P.py = P.by;
+    }
+    if (P.real) padFrame(P, now);
+    if (!P.down && Math.hypot(P.tx - P.bx, P.ty - P.by) < 0.8) {
+      if (P.pad) { padEnd(P.pad); P.pad = null; }
+      pointers.delete(id);
+    }
+  }
+
+  function render(now) {
+    if (stamps.length > MAX_STAMPS) {
+      const over = stamps.length - MAX_STAMPS;
+      for (let i = 0; i < over; i++) if (!stamps[i].kill) stamps[i].kill = now;
+    }
+    const n = stamps.length;
+    if (n === 0 && !oldAlive && !bakeDirty && settle <= 0 && S.mode !== 4) return;   // 何も変わらないときは描かない
+    if (n > 0) settle = 2; else settle--;
+    bakeDirty = false;
+
+    const direct = S.sym === 0 || S.mode > 0;
+    const g = direct ? ctx : lctx;
+    const wipe = 1 - (now - wipeT) / wipeDur;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.globalCompositeOperation = 'lighter';
+    if (oldAlive) {
+      if (wipe <= 0) {
+        oldAlive = false;
+        boctx.setTransform(1, 0, 0, 1, 0, 0);
+        boctx.clearRect(0, 0, bakeOld.width, bakeOld.height);
+      } else {
+        g.globalAlpha = wipe;
+        g.drawImage(bakeOld, 0, 0);
+      }
+    }
+    if (bakeHas) { g.globalAlpha = 1; g.drawImage(bake, 0, 0); }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    let w = 0;
+    for (let i = 0; i < n; i++) {
+      const s = stamps[i];
+      const age = now - s.born;
+      const a = age / s.life;
+      if (a >= 1) continue;
+      let m = 1;
+      if (s.born < wipeT) { if (wipe <= 0) continue; m = wipe; }
+      if (s.kill) { const km = 1 - (now - s.kill) / 1.2; if (km <= 0) continue; m *= km; }
+      stamps[w++] = s;
+
+      if (s.ring) {
+        const f = 1 - a, e = 1 - f * f;
+        const al0 = f * Math.sqrt(f) * 0.3 * m / Math.sqrt(s.wk);
+        if (al0 <= 0.003) continue;
+        const r = s.r0 + (s.r1 - s.r0) * e;
+        const wd = (24 + a * 64) * s.wk;                 // 広がるほど帯が太く、淡くにじむ
+        const inner = Math.max(0, r - wd), outer = r + wd;
+        const gr = g.createRadialGradient(s.x, s.y, inner, s.x, s.y, outer);
+        gr.addColorStop(0,    `rgba(${s.col},0)`);
+        gr.addColorStop(0.2,  `rgba(${s.col},.14)`);
+        gr.addColorStop(0.36, `rgba(${s.col},.55)`);
+        gr.addColorStop(0.5,  `rgba(${s.col},1)`);
+        gr.addColorStop(0.64, `rgba(${s.col},.55)`);
+        gr.addColorStop(0.8,  `rgba(${s.col},.14)`);
+        gr.addColorStop(1,    `rgba(${s.col},0)`);
+        g.globalAlpha = al0;
+        g.fillStyle = gr;
+        g.beginPath();
+        g.arc(s.x, s.y, outer, 0, Math.PI * 2);
+        g.fill();
+        continue;
+      }
+      let x, y, d, al;
+      if (s.spark) {
+        const slow = 1 - a * 0.5;
+        x = s.x + s.vx * age * slow;
+        y = s.y + s.vy * age * slow - 7 * age;
+        d = s.size;
+        al = (1 - a) * (0.62 + 0.38 * Math.sin(age * 9 + s.ph));
+      } else {
+        // 時間がたつほど、水に溶ける墨のようにゆらいで広がる
+        const e = a * a, amp = e * 28;
+        x = s.x + Math.sin(s.y * 0.011 + now * 0.45 + s.ph) * amp;
+        y = s.y + Math.cos(s.x * 0.011 + now * 0.38 + s.ph) * amp - e * 18;
+        d = s.size * (1 + a * 0.9);
+        const f = 1 - a;
+        al = BASE_ALPHA * f * Math.sqrt(f) * s.k;
+      }
+      al *= m;
+      if (al <= 0.003) continue;
+      g.globalAlpha = al;
+      g.drawImage(s.img, x - d / 2, y - d / 2, d, d);
+    }
+    stamps.length = w;
+    if (S.mode === 4) drawFireflies(g, now);
+
+    if (!direct) {
+      const cw = cv.width, ch = cv.height, cx = cw / 2, cy = ch / 2;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.globalCompositeOperation = 'lighter';
+      if (S.sym >= 2) {
+        // 回して重ねる対称では、画面の端で切れた光の断面が直線として見えてしまうので、下描きの四辺をぼかしておく
+        const m = 56 * dpr;
+        lctx.setTransform(1, 0, 0, 1, 0, 0);
+        lctx.globalAlpha = 1;
+        lctx.globalCompositeOperation = 'destination-in';
+        for (const horiz of [true, false]) {
+          const span = horiz ? cw : ch;
+          const gr = horiz ? lctx.createLinearGradient(0, 0, cw, 0) : lctx.createLinearGradient(0, 0, 0, ch);
+          gr.addColorStop(0, 'rgba(0,0,0,0)');
+          gr.addColorStop(m / span, 'rgba(0,0,0,1)');
+          gr.addColorStop(1 - m / span, 'rgba(0,0,0,1)');
+          gr.addColorStop(1, 'rgba(0,0,0,0)');
+          lctx.fillStyle = gr;
+          lctx.fillRect(0, 0, cw, ch);
+        }
+      }
+      if (S.sym === 1) {
+        ctx.drawImage(layer, 0, 0);
+        ctx.setTransform(-1, 0, 0, 1, cw, 0);
+        ctx.drawImage(layer, 0, 0);
+      } else if (S.sym === 3) {
+        // 外側へ3枚、内側へ11枚。中心に近い写しほど小さく、淡くなる
+        for (let i = -SPIRAL.outer; i <= SPIRAL.inner; i++) {
+          const sc = Math.pow(SPIRAL.shrink, i);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.translate(cx, cy);
+          ctx.rotate(i * SPIRAL.turn);
+          ctx.scale(sc, sc);
+          ctx.globalAlpha = Math.pow(0.94, Math.abs(i));
+          ctx.drawImage(layer, -cx, -cy);
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        for (let i = 0; i < 6; i++) {
+          for (let mir = 1; mir >= -1; mir -= 2) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.translate(cx, cy);
+            ctx.rotate(i * Math.PI / 3);
+            ctx.scale(mir, 1);
+            ctx.drawImage(layer, -cx, -cy);
+          }
+        }
+      }
+    }
+  }
+
+  /* ---------- 蛍 ---------- */
+  // 淡い光の点がゆらめきながら漂い、少しずつ増えていく。指で囲むと、はかなく消える
+  const FLY_MAX = 28;
+  let flies = [], flyNext = 0, flashes = [];
+
+  function addFly(now, quick) {
+    const top = 90, bottom = Math.max(top + 60, H - 170);
+    flies.push({
+      x: 30 + Math.random() * Math.max(1, W - 60),
+      y: top + Math.random() * (bottom - top),
+      ang: Math.random() * Math.PI * 2,
+      spd: 7 + Math.random() * 13,
+      born: quick ? now - 1.5 : now,
+      ph: Math.random() * Math.PI * 2,
+      per: 2.6 + Math.random() * 2.2,     // 明滅の周期(秒)
+      size: 0.8 + Math.random() * 0.5,
+      ci: (Math.random() * 5) | 0,
+      gone: 0                             // 消えはじめた時刻
+    });
+  }
+  function resetFireflies(now) {
+    flies = []; flashes = [];
+    for (let i = 0; i < 6; i++) addFly(now, true);
+    flyNext = now + 2 + Math.random() * 3;
+  }
+  function updateFireflies(now, dt) {
+    if (now >= flyNext) {   // 気まぐれに増える
+      if (flies.length < FLY_MAX) addFly(now, false);
+      flyNext = now + 1.5 + Math.random() * 4.5;
+    }
+    const top = 80, bottom = Math.max(top + 60, H - 150);
+    let w = 0;
+    for (const f of flies) {
+      if (f.gone) {
+        if (now - f.gone > 1.3) continue;
+        f.y -= 16 * dt;   // 消えるときは、ふわりと上へ
+      } else {
+        f.ang += (Math.random() - 0.5) * 2.4 * dt;
+        // 画面の端に近づいたら、ゆっくり内側へ向きを変える
+        let tx = 0, ty = 0;
+        if (f.x < 36) tx = 1; else if (f.x > W - 36) tx = -1;
+        if (f.y < top) ty = 1; else if (f.y > bottom) ty = -1;
+        if (tx || ty) {
+          const want = Math.atan2(ty, tx);
+          let d = want - f.ang;
+          while (d > Math.PI) d -= Math.PI * 2;
+          while (d < -Math.PI) d += Math.PI * 2;
+          f.ang += d * Math.min(1, dt * 2);
+        }
+        const sway = 0.6 + 0.4 * Math.sin(now * 0.9 + f.ph);
+        f.x += Math.cos(f.ang) * f.spd * sway * dt;
+        f.y += Math.sin(f.ang) * f.spd * sway * dt + Math.sin(now * 1.3 + f.ph) * 3 * dt;
+      }
+      flies[w++] = f;
+    }
+    flies.length = w;
+  }
+  function drawFireflies(g, now) {
+    // 囲んだところが、淡く光って消える
+    let fw = 0;
+    for (const fl of flashes) {
+      const a = (now - fl.born) / 0.9;
+      if (a >= 1) continue;
+      flashes[fw++] = fl;
+      g.globalAlpha = 0.13 * (1 - a) * (1 - a);
+      g.fillStyle = 'rgb(200,255,110)';
+      g.beginPath();
+      g.moveTo(fl.poly[0][0], fl.poly[0][1]);
+      for (let i = 1; i < fl.poly.length; i++) g.lineTo(fl.poly[i][0], fl.poly[i][1]);
+      g.closePath(); g.fill();
+    }
+    flashes.length = fw;
+
+    const set = sprites(1);   // 蛍の色
+    for (const f of flies) {
+      const fadeIn = Math.min(1, (now - f.born) / 1.5);
+      let b = 0.5 + 0.5 * Math.sin(now * Math.PI * 2 / f.per + f.ph);
+      b = 0.1 + 0.9 * Math.pow(b, 2.2);          // ゆっくり灯って、ゆっくり消える
+      let k = fadeIn, grow = 1;
+      if (f.gone) {
+        const a = Math.min(1, (now - f.gone) / 1.3);
+        k *= (1 - a) * (1 - a);
+        b = Math.max(b, 0.75);                   // 消えぎわに、ひときわ明るく灯る
+        grow = 1 + a * 1.4;
+      }
+      const img = set[f.ci];
+      const halo = 54 * f.size * (0.7 + 0.3 * b) * grow, core = 15 * f.size * grow;
+      g.globalAlpha = 0.5 * b * k;
+      g.drawImage(img, f.x - halo / 2, f.y - halo / 2, halo, halo);
+      g.globalAlpha = Math.min(1, 0.25 + 0.75 * b) * k;
+      g.drawImage(img, f.x - core / 2, f.y - core / 2, core, core);
+    }
+  }
+  // ---- 囲んだかどうかの判定 ----
+  function segCross(a, b, c, d) {   // 線分 ab と cd が交わるか
+    const d1x = b[0] - a[0], d1y = b[1] - a[1], d2x = d[0] - c[0], d2y = d[1] - c[1];
+    const den = d1x * d2y - d1y * d2x;
+    if (Math.abs(den) < 1e-9) return false;
+    const t = ((c[0] - a[0]) * d2y - (c[1] - a[1]) * d2x) / den;
+    const u = ((c[0] - a[0]) * d1y - (c[1] - a[1]) * d1x) / den;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+  }
+  function inside(poly, x, y) {
+    let inn = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inn = !inn;
+    }
+    return inn;
+  }
+  function polyArea(poly) {
+    let a = 0;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) a += poly[j][0] * poly[i][1] - poly[i][0] * poly[j][1];
+    return Math.abs(a) / 2;
+  }
+  function catchInside(poly, now) {
+    if (poly.length < 4 || polyArea(poly) < 900) return;
+    flashes.push({ poly, born: now });
+    const fake = { pal: 1, cpos: 0 };
+    let n = 0;
+    for (const f of flies) {
+      if (f.gone || !inside(poly, f.x, f.y)) continue;
+      f.gone = now;
+      for (let i = 0; i < 3; i++) { fake.cpos = Math.random() * 6; addSpark(f.x, f.y, fake, now, false); }
+      hit(9 + ((Math.random() * 6) | 0), 0.07, n * 0.09);   // 消えるたびに、小さな音がひとつ
+      n++;
+    }
+  }
+  // なぞった線が自分自身と交わったら、そこまでの輪で囲んだことにする
+  function trackLoop(P, now) {
+    const path = P.path, last = path[path.length - 1];
+    if (Math.hypot(P.bx - last[0], P.by - last[1]) < 7) return;
+    const cur = [P.bx, P.by];
+    for (let i = path.length - 3; i >= 1; i--) {
+      if (segCross(path[i - 1], path[i], last, cur)) {
+        catchInside(path.slice(i).concat([cur]), now);
+        P.path = [cur];
+        return;
+      }
+    }
+    path.push(cur);
+    if (path.length > 500) path.shift();
+  }
+  // 輪を閉じきらずに指を離しても、書きはじめの近くまで戻っていれば囲んだことにする
+  function closeOnRelease(P, now) {
+    const path = P.path;
+    if (path.length < 8) return;
+    const a = path[0], b = [P.bx, P.by];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of path) { minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]); minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]); }
+    const gap = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (gap < Math.max(44, Math.hypot(maxX - minX, maxY - minY) * 0.28)) catchInside(path.concat([b]), now);
+    P.path = [b];
+  }
+
+  /* ---------- はじめの一筆(お手本) ---------- */
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let demo = reduced ? null : { start: null, started: false, dur: 4.4 };
+  function updateDemo(now) {
+    if (!demo) return;
+    if (demo.start === null) { demo.start = now + 0.8; return; }
+    if (now < demo.start) return;
+    const q = Math.min(1, (now - demo.start) / demo.dur);
+    const e = q * q * (3 - 2 * q);
+    const th = -Math.PI / 2 + e * Math.PI * 2;
+    const R = Math.min(W * 0.34, 230);
+    const x = W / 2 + R * Math.sin(th);
+    const y = H * 0.5 + R * 0.5 * Math.sin(th * 2);
+    if (!demo.started) { startStroke('demo', x, y, now); demo.started = true; }
+    else { const P = pointers.get('demo'); if (P) { P.tx = x; P.ty = y; } }
+    if (q >= 1) { endStroke('demo'); demo = null; }
+  }
+  function cancelDemo() {
+    if (!demo) return;
+    if (demo.started) endStroke('demo');
+    demo = null;
+  }
+
+  /* ---------- 音(ガムラン / 琴 / シンセパッド) ---------- */
+  // S.snd: 0 オフ、1 ガムラン、2 琴、3 パッド
+  // 4 はランダム:お手本をなぞり終えるたびに、ほかの楽器に替わる
+  const SND_LABELS = ['オフ', 'ガムラン', '琴', 'パッド', 'ランダム'];
+  let inst = 1;   // いま鳴らす楽器(1 ガムラン、2 琴、3 パッド)
+  function applySnd() { inst = S.snd >= 1 && S.snd <= 3 ? S.snd : 1 + ((Math.random() * 3) | 0); }
+  function shuffleInst() {   // いまとは違う楽器に替える
+    if (S.snd !== 4) return;
+    inst = 1 + ((inst - 1 + 1 + ((Math.random() * 2) | 0)) % 3);
+  }
+  // ガムラン:バリに多い5音のペロッグ。平均律からずれた音程をセントで持つ
+  const PELOG = [0, 120, 270, 670, 800];
+  const PELOG_HZ = 277;
+  // 琴:平調子(ソ・ラ・シ♭・レ・ミ♭)。箏曲でいちばんよく使われる古い調弦
+  const HIRAJOSHI = [0, 200, 300, 700, 800];
+  const KOTO_HZ = 196;
+  const NOTES = 15;              // 5音 × 3オクターブ。画面の上ほど高い音
+  const FIGURE = [0, 1, 0, 2];   // 横になぞるときの音型
+  // パッド:画面の高さで和音が変わる(ド3 からの半音数)。7th や 9th を重ねた、やわらかい響き
+  const PAD_CHORDS = [
+    [5, 9, 12, 16],    // Fmaj7
+    [7, 11, 14, 21],   // Gadd9
+    [9, 12, 19, 23],   // Am9
+    [12, 16, 23, 26],  // Cmaj9
+    [14, 17, 24, 28],  // Dm9
+    [16, 19, 23, 26],  // Em7
+    [17, 21, 28, 31],  // Fmaj9
+  ];
+  let ac = null, master = null, outNode = null, kotoBus = null, sounding = 0;
+  const kotoBufs = [];
+
+  function initAudio() {
+    if (ac) return true;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try {
+      // iPhone の消音スイッチが入っていても鳴るようにする(対応している端末のみ)
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+      ac = new AC();
+      master = ac.createGain(); master.gain.value = 0.9;
+      const comp = ac.createDynamicsCompressor();
+      const delay = ac.createDelay(1); delay.delayTime.value = 0.31;
+      const fb = ac.createGain(); fb.gain.value = 0.3;
+      const wet = ac.createGain(); wet.gain.value = 0.22;
+      master.connect(comp);
+      master.connect(delay); delay.connect(fb); fb.connect(delay);
+      delay.connect(wet); wet.connect(comp);
+      comp.connect(ac.destination);
+      outNode = comp;
+      return true;
+    } catch (e) { ac = null; return false; }
+  }
+  // ブラウザは画面に触れてからでないと音を出せないので、触れるたびに音の準備をする
+  function unlockAudio() {
+    if (!S.snd) return;
+    if (!ac && !initAudio()) return;
+    if (ac.state !== 'running') { try { const p = ac.resume(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+  }
+  function zoneForY(y) {
+    return clamp(Math.floor((1 - y / Math.max(1, H)) * NOTES), 0, NOTES - 1);
+  }
+  function scaleFreq(base, scale, i) {
+    return base * Math.pow(2, Math.floor(i / scale.length) + scale[i % scale.length] / 1200);
+  }
+
+  // ガムラン:青銅の鍵盤を叩いた音。少しずらした2台を重ねて、特有のうなりを作る
+  function gamelanHit(i, vel, delaySec, long) {
+    const t = ac.currentTime + delaySec;
+    const f = scaleFreq(PELOG_HZ, PELOG, i);
+    const oct = Math.floor(i / 5);
+    const dec = (2.3 - oct * 0.45) * long * (sounding > 16 ? 0.55 : 1);
+    const out = ac.createGain(); out.gain.value = vel; out.connect(master);
+    const hard = clamp((vel - 0.06) / 0.24, 0, 1);   // 強く叩くほど、高い倍音が増えて明るく鳴る
+    const parts = [[1, 0, 1, dec], [1, 6.5, 0.8, dec], [2.76, 0, 0.12 + hard * 0.34, dec * 0.4], [5.4, 0, 0.03 + hard * 0.2, dec * 0.18]];
+    parts.forEach(([ratio, det, amp, d], n) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * ratio + det;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(amp, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(out);
+      o.start(t); o.stop(t + d + 0.05);
+      if (n === 0) { sounding++; o.onended = () => { sounding--; out.disconnect(); }; }
+    });
+  }
+  // 琴:シンセの波形ではなく、弦の振動そのものを計算して音を作る(撥弦の物理モデル)。
+  // 雑音で弦をはじき、弦を一往復するたびに少しずつ丸く弱くしていくと、生の弦の響きになる
+  function kotoBuf(i) {
+    if (kotoBufs[i]) return kotoBufs[i];
+    const sr = ac.sampleRate;
+    const f = scaleFreq(KOTO_HZ, HIRAJOSHI, i);
+    const oct = Math.floor(i / 5);
+    const T = 4.2 - oct * 0.7;                 // 余韻の長さ(秒)。低い弦ほど長い
+    const len = Math.floor(sr * (T + 0.3));
+    const soft = 0.5 - oct * 0.17;             // 一往復ごとの丸め具合。高い弦ほど明るさを残す
+    const D = sr / f - soft;                   // 弦の長さ(サンプル数)。端数まで合わせて音程を正確に
+    const Di = Math.floor(D), fr = D - Di;
+    // 一往復ごとの減衰。丸めで失う分を補って、基音が T 秒かけて消えるようにする
+    const w = 2 * Math.PI * f / sr;
+    const loss = Math.sqrt((1 - soft) * (1 - soft) + soft * soft + 2 * soft * (1 - soft) * Math.cos(w));
+    const g = Math.min(0.9996, Math.pow(0.001, 1 / (f * T)) / loss);
+    const buf = ac.createBuffer(1, len, sr);
+    const y = buf.getChannelData(0);
+    const exc = new Float32Array(Di + 2);      // はじく力:少し丸めた雑音
+    let lpv = 0;
+    for (let n = 0; n < exc.length; n++) { lpv += ((Math.random() * 2 - 1) - lpv) * 0.55; exc[n] = lpv; }
+    const pp = Math.max(1, Math.round(Di * 0.14));   // 弦の端から1/7あたりを爪ではじく(琴らしい硬めの音色)
+    for (let n = 0; n < len; n++) {
+      let v = 0;
+      if (n < exc.length) v = exc[n] - (n >= pp ? exc[n - pp] * 0.9 : 0);
+      if (n >= Di + 2) {
+        const p0 = y[n - Di] * (1 - fr) + y[n - Di - 1] * fr;
+        const p1 = y[n - Di - 1] * (1 - fr) + y[n - Di - 2] * fr;
+        v += g * ((1 - soft) * p0 + soft * p1);
+      }
+      y[n] = v;
+    }
+    let peak = 0;
+    for (let n = 0; n < len; n++) { const v = Math.abs(y[n]); if (v > peak) peak = v; }
+    const norm = peak ? 0.9 / peak : 1, tail = Math.floor(sr * 0.25);
+    for (let n = 0; n < len; n++) y[n] *= norm * (n > len - tail ? (len - n) / tail : 1);
+    return (kotoBufs[i] = buf);
+  }
+  // 桐の胴の鳴りと、部屋の響き
+  function kotoSetup() {
+    if (kotoBus) return;
+    kotoBus = ac.createGain();
+    const body1 = ac.createBiquadFilter(); body1.type = 'peaking'; body1.frequency.value = 230; body1.Q.value = 1.1; body1.gain.value = 5;
+    const body2 = ac.createBiquadFilter(); body2.type = 'peaking'; body2.frequency.value = 950; body2.Q.value = 1.4; body2.gain.value = 3.5;
+    const top = ac.createBiquadFilter(); top.type = 'lowpass'; top.frequency.value = 7500; top.Q.value = 0.5;
+    kotoBus.connect(body1); body1.connect(body2); body2.connect(top); top.connect(master);
+    const sr = ac.sampleRate, n = Math.floor(sr * 1.5);
+    const ir = ac.createBuffer(2, n, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      for (let k = 0; k < n; k++) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / n, 2.6);
+    }
+    const conv = ac.createConvolver(); conv.buffer = ir;
+    const wet = ac.createGain(); wet.gain.value = 0.28;
+    top.connect(conv); conv.connect(wet); wet.connect(outNode);
+  }
+  function kotoHit(i, vel, delaySec, long) {
+    kotoSetup();
+    const t = ac.currentTime + delaySec;
+    const src = ac.createBufferSource(); src.buffer = kotoBuf(i);
+    const r = Math.pow(2, (Math.random() - 0.5) * 9 / 1200);   // 弾くたびにほんの少し音程が違う
+    const hard = clamp((vel - 0.06) / 0.24, 0, 1);
+    src.playbackRate.setValueAtTime(r * (1.003 + hard * 0.009), t);   // 強くはじくほど、瞬間の音程の上ずりが大きい
+    src.playbackRate.exponentialRampToValueAtTime(r, t + 0.07);
+    if (long > 1) {   // 長押しの低い音には「後押し」。弾いたあとに弦を押して音程をしゃくる
+      src.playbackRate.setValueAtTime(r, t + 0.28);
+      src.playbackRate.linearRampToValueAtTime(r * 1.03, t + 0.6);
+      src.playbackRate.linearRampToValueAtTime(r, t + 1.1);
+    }
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.5;
+    lp.frequency.value = 1700 + Math.pow(hard, 1.5) * 8000;            // 弱く弾くと丸くこもり、強く弾くと爪の硬い音が立つ
+    const g = ac.createGain(); g.gain.value = vel * 1.7 * (0.9 + Math.random() * 0.2);
+    src.connect(lp); lp.connect(g); g.connect(kotoBus);
+    src.start(t);
+    if (sounding > 16) {
+      g.gain.setValueAtTime(g.gain.value, t + 0.8);
+      g.gain.linearRampToValueAtTime(0, t + 1.3);
+      src.stop(t + 1.35);
+    }
+    sounding++; src.onended = () => { sounding--; g.disconnect(); };
+  }
+  function hit(i, vel, delaySec = 0, long = 1) {
+    if (!S.snd || inst === 3 || !ac || ac.state !== 'running') return;
+    i = clamp(i, 0, NOTES - 1);
+    try { if (inst === 1) gamelanHit(i, vel, delaySec, long); else kotoHit(i, vel, delaySec, long); } catch (e) {}
+  }
+  // ---- 弾く強さ ----
+  // 画面は「叩いた強さ」を直接は教えてくれないので、端末が出してくれる手がかりから推し量る。
+  // 筆圧が取れる端末は筆圧、取れなければ指が画面に触れている面積(強く叩くほど指がつぶれて広くなる)。
+  // どちらも取れない端末では、なぞる速さで強弱をつける。
+  function makeStat(minDev, rate) { return { mean: null, dev: 0, n: 0, minDev, rate }; }
+  const strengthStats = {
+    down: { p: makeStat(0.01, 0.1), s: makeStat(0.6, 0.1) },      // 触れた瞬間用
+    move: { p: makeStat(0.01, 0.012), s: makeStat(0.6, 0.012) },  // なぞっている間用
+  };
+  // その人・その端末のふだんの値を覚えておき、それより強いか弱いかを 0〜1 で返す
+  function statEval(st, v) {
+    if (st.mean === null) { st.mean = v; st.n = 1; return null; }
+    st.n++;
+    const k = st.n < 8 ? 0.3 : st.rate;
+    const d = Math.abs(v - st.mean);
+    st.mean += (v - st.mean) * k;
+    st.dev += (d - st.dev) * k;
+    if (st.dev < st.minDev) return null;   // 値がほとんど動かない端末では測れない
+    return clamp(0.5 + (v - st.mean) / (st.dev * 4), 0, 1);
+  }
+  function strengthOf(e, kind) {
+    if (e.pointerType === 'mouse') return null;
+    const st = strengthStats[kind];
+    let out = null;
+    if (e.pressure > 0) out = statEval(st.p, e.pressure);
+    const size = Math.max(e.width || 0, e.height || 0);
+    if (size > 1) { const v = statEval(st.s, size); if (out === null) out = v; }
+    return out;
+  }
+  // 強さ(0〜1)を音の大きさに。弱い音と強い音の差をはっきりつける
+  function velOf(str) { return 0.06 + 0.24 * Math.pow(clamp(str, 0, 1), 1.2); }
+
+  // なぞる高さが変わると音が変わり、横に進むと音型をくり返す(ガムラン・琴)
+  function soundMove(P, len, now) {
+    if (!S.snd || inst === 3 || !ac) return;
+    P.sdist += len;
+    const z = zoneForY(P.by);
+    const bySpeed = clamp(0.3 + P.speed / 1800, 0, 1);   // 速くなぞるほど強く
+    const vel = velOf(P.str === null ? bySpeed : P.str * 0.7 + bySpeed * 0.3);
+    if (z !== P.zone && now - P.lastHit > 0.07) {
+      P.zone = z; P.sdist = 0; P.lastHit = now;
+      hit(z, vel);
+    } else if (P.sdist > 120 && now - P.lastHit > 0.12) {
+      P.sdist = 0; P.lastHit = now; P.step++;
+      hit(z + FIGURE[P.step % FIGURE.length], vel * 0.85);
+    }
+  }
+
+  // パッド:触れている間、和音が鳴り続けるデジタルなシンセ。
+  // 鳴りはじめは下からしゃくり上がり、横に動かすと音程がベンドし、和音は滑りながら移り変わる
+  function padFreq(semi) { return 130.81 * Math.pow(2, semi / 12); }
+  function padStart(z, cutoff) {
+    try {
+      const t = ac.currentTime;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 5; lp.frequency.value = cutoff;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.setTargetAtTime(0.07, t, 0.14);
+      lp.connect(g); g.connect(master);
+
+      const oscs = [], nodes = [];
+      PAD_CHORDS[z].forEach((semi, n) => {
+        for (const det of [-9, 9]) {
+          const o = ac.createOscillator();
+          o.type = 'sawtooth'; o.frequency.value = padFreq(semi); o.detune.value = det + n * 1.5;
+          o.connect(lp); oscs.push(o);
+        }
+      });
+      // テルミンのような高い声。和音のいちばん上の音の1オクターブ上を、遅れて滑りながら追いかける
+      const lead = ac.createOscillator(), lg = ac.createGain();
+      lead.type = 'sine'; lead.frequency.value = padFreq(PAD_CHORDS[z][3] + 12);
+      lg.gain.value = 0.5;
+      lead.connect(lg); lg.connect(g);
+      oscs.push(lead);
+
+      // 音程を動かす3つの力:ベンド、ゆっくりした漂い、細かいビブラート
+      const bend = ac.createConstantSource();
+      bend.offset.setValueAtTime(-700, t);          // 5度下からしゃくり上がる
+      bend.offset.setTargetAtTime(0, t, 0.09);
+      const drift = ac.createOscillator(), dg = ac.createGain();
+      drift.frequency.value = 0.31; dg.gain.value = 11; drift.connect(dg);
+      const vibo = ac.createOscillator(), vib = ac.createGain();
+      vibo.frequency.value = 6.2; vib.gain.value = 5; vibo.connect(vib);
+      oscs.forEach((o) => { bend.connect(o.detune); dg.connect(o.detune); vib.connect(o.detune); });
+      // フィルターもゆっくり揺らして、音色がうねるように
+      const wob = ac.createOscillator(), wg = ac.createGain();
+      wob.frequency.value = 0.9; wg.gain.value = 260; wob.connect(wg); wg.connect(lp.frequency);
+
+      nodes.push(...oscs, bend, drift, vibo, wob);
+      nodes.forEach((n) => n.start(t));
+      return { lp, g, oscs, nodes, bend, vib, vibo };
+    } catch (e) { return null; }
+  }
+  // 和音を切り替えるときは鳴らし直さず、それぞれの音が違う速さで滑って次の和音に着く
+  function padGlide(pad, z) {
+    const t = ac.currentTime, ch = PAD_CHORDS[z];
+    pad.oscs.forEach((o, k) => {
+      const lead = k === pad.oscs.length - 1;
+      const f = lead ? padFreq(ch[3] + 12) : padFreq(ch[Math.floor(k / 2)]);
+      o.frequency.setTargetAtTime(f, t, lead ? 0.22 : 0.05 + Math.floor(k / 2) * 0.035);
+    });
+  }
+  function padEnd(pad) {
+    try {
+      const t = ac.currentTime;
+      pad.g.gain.cancelScheduledValues(t);
+      pad.g.gain.setTargetAtTime(0.0001, t, 0.5);
+      pad.bend.offset.cancelScheduledValues(t);
+      pad.bend.offset.setTargetAtTime(-600, t, 0.7);   // 消えぎわに音程がすうっと落ちていく
+      pad.nodes.forEach((n) => n.stop(t + 3.5));
+      setTimeout(() => { try { pad.g.disconnect(); } catch (e) {} }, 4000);
+    } catch (e) {}
+  }
+  // 左は暗く、右は明るい音色。長押しでためるほど明るく開く
+  function padCutoff(P) {
+    return 500 + clamp(P.bx / Math.max(1, W), 0, 1) * 2400 + Math.min(1.5, P.charge) * 900;
+  }
+  function padFrame(P, now) {
+    const want = S.snd && inst === 3 && P.down && ac && ac.state === 'running';
+    if (!want) { if (P.pad) { padEnd(P.pad); P.pad = null; } return; }
+    const z = clamp(Math.floor((1 - P.by / Math.max(1, H)) * PAD_CHORDS.length), 0, PAD_CHORDS.length - 1);
+    if (!P.pad) {
+      P.pad = padStart(z, padCutoff(P)); P.pz = z; P.padT = now; P.x0 = P.bx;
+      return;
+    }
+    const t = ac.currentTime;
+    if (z !== P.pz && now - P.padT > 0.12) { padGlide(P.pad, z); P.pz = z; P.padT = now; }
+    // 触れた位置から右へ動かすと音程が上がり、左へ動かすと下がる(最大で長3度)
+    const bend = clamp((P.bx - P.x0) / (W * 0.45), -1, 1) * 400;
+    P.pad.bend.offset.setTargetAtTime(bend, t, 0.06);
+    // 長押しでためるほど、ビブラートが深く速くなる
+    const c = Math.min(1.5, P.charge);
+    P.pad.vib.gain.setTargetAtTime(5 + c * 45, t, 0.2);
+    P.pad.vibo.frequency.setTargetAtTime(6.2 + c * 2.5, t, 0.2);
+    P.pad.lp.frequency.setTargetAtTime(padCutoff(P), t, 0.12);
+  }
+  function padOnce(z, ms, z2) {   // 和音を短く鳴らす。z2 があれば途中でその和音へ滑る
+    if (!ac || ac.state !== 'running') return;
+    const pad = padStart(z, 2400);
+    if (!pad) return;
+    if (z2 !== undefined) setTimeout(() => padGlide(pad, z2), ms * 0.4);
+    setTimeout(() => padEnd(pad), ms);
+  }
+  // お手本が完成したときの音。どの楽器でも同じ、落ち着いた「ポーン」
+  function pon() {
+    if (!S.snd || !ac || ac.state !== 'running') return;
+    try {
+      const t = ac.currentTime + 0.04;
+      const out = ac.createGain(); out.gain.value = 0.3; out.connect(master);
+      // やわらかく立ち上がって長く伸びる低めの音(ソ)に、1オクターブ上をうっすら重ねる
+      [[392, 1, 3.4], [784, 0.2, 2.2], [1176, 0.05, 1.2]].forEach(([f, amp, d], n) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(amp, t + 0.035);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g); g.connect(out);
+        o.start(t); o.stop(t + d + 0.05);
+        if (n === 0) o.onended = () => out.disconnect();
+      });
+    } catch (e) {}
+  }
+  function soundTest() {   // 音を切り替えたら、ひと鳴らしして確かめられるように
+    if (inst === 3) padOnce(2, 1000, 3);
+    else [5, 7, 9].forEach((n, i) => hit(n, 0.1 + i * 0.07, i * 0.22));   // 弱・中・強の順に鳴らす
+  }
+
+  /* ---------- 入力 ---------- */
+  const hint = document.getElementById('hint');
+  let downCount = 0;
+  function setDrawing() { document.body.classList.toggle('drawing', downCount > 0); }
+
+  cv.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    unlockAudio();
+    if (G && (G.done || !G.ready)) return;   // 完成してから次のお手本が現れきるまでは、描けない
+    cancelDemo();
+    hint.classList.add('gone');
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    startStroke(e.pointerId, e.clientX, e.clientY, nowSec(), strengthOf(e, 'down'));
+    downCount++; setDrawing();
+  });
+  cv.addEventListener('pointermove', (e) => {
+    const P = pointers.get(e.pointerId);
+    if (P && P.down) {
+      P.tx = e.clientX; P.ty = e.clientY;
+      const st = strengthOf(e, 'move');   // なぞっている間も、押さえる強さの変化を拾う
+      if (st !== null) P.str = P.str === null ? st : P.str + (st - P.str) * 0.25;
+    }
+  });
+  function release(e) {
+    const P = pointers.get(e.pointerId);
+    if (P && P.down) {
+      P.down = false;
+      if (S.mode === 4) closeOnRelease(P, nowSec());
+      downCount = Math.max(0, downCount - 1); setDrawing();
+    }
+  }
+  cv.addEventListener('pointerup', release);
+  // タッチ操作では「指を離した瞬間」に音が許可される端末が多い
+  for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(ev, unlockAudio, true);
+  cv.addEventListener('pointercancel', release);
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  window.addEventListener('blur', () => {
+    for (const P of pointers.values()) P.down = false;
+    downCount = 0; setDrawing();
+  });
+  window.addEventListener('resize', sizeCanvas);
+
+  /* ---------- 設定バー ---------- */
+  const swWrap = document.getElementById('swatches');
+  const symBtn = document.getElementById('symBtn');
+  const lifeBtn = document.getElementById('lifeBtn');
+  const sndBtn = document.getElementById('sndBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const modesEl = document.getElementById('modes');
+  const nav = document.getElementById('nav');
+  const gName = document.getElementById('gName');
+  const gSub = document.getElementById('gSub');
+  const zsetBtn = document.getElementById('zsetBtn');
+  const zsheet = document.getElementById('zsheet');
+  const zgrid = document.getElementById('zgrid');
+  const zStartSel = document.getElementById('zStart');
+
+  PALETTES.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'sw';
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-label', p.name);
+    b.title = p.name;
+    const dot = document.createElement('i');
+    dot.style.background = `conic-gradient(from 210deg, ${p.colors.join(', ')}, ${p.colors[0]})`;
+    b.appendChild(dot);
+    b.addEventListener('click', () => { S.pal = i; save(); syncUI(); });
+    swWrap.appendChild(b);
+  });
+
+  function syncUI() {
+    [...swWrap.children].forEach((b, i) => b.setAttribute('aria-checked', String(i === S.pal)));
+    const guiding = S.mode >= 1 && S.mode <= 3;
+    const hotaru = S.mode === 4;
+    [...modesEl.children].forEach((b, i) => b.setAttribute('aria-checked', String(i === S.mode)));
+    nav.hidden = !guiding && !hotaru;
+    nav.classList.toggle('solo', hotaru);
+    if (hotaru) { gName.textContent = '蛍'; gSub.textContent = '指で囲むと、はかなく消えます'; }
+    if (guiding) {
+      const items = GUIDES[S.mode].items, i = S.idx[S.mode], o = order(S.mode);
+      gName.textContent = items[i].name;
+      gSub.textContent = (items[i].sub ? items[i].sub + '  ' : '') + (o.indexOf(i) + 1) + ' / ' + o.length;
+    }
+    const noSym = S.mode > 0;   // お手本や蛍のときは対称なし
+    symBtn.disabled = noSym;
+    symBtn.querySelector('.v').textContent = noSym ? 'なし' : SYMS[S.sym];
+    symBtn.setAttribute('aria-label', '対称:' + (noSym ? 'なし' : SYMS[S.sym]) + '。押すと切り替え');
+    lifeBtn.querySelector('.v').textContent = LIVES[S.life].label;
+    lifeBtn.setAttribute('aria-label', '余韻:' + LIVES[S.life].label + '。押すと切り替え');
+    sndBtn.querySelector('.v').textContent = SND_LABELS[S.snd];
+    sndBtn.setAttribute('aria-label', '音:' + SND_LABELS[S.snd] + '。押すと切り替え');
+    zsetBtn.hidden = S.mode !== 3;
+  }
+  symBtn.addEventListener('click', () => { S.sym = (S.sym + 1) % SYMS.length; settle = 2; save(); syncUI(); });
+  lifeBtn.addEventListener('click', () => { S.life = (S.life + 1) % LIVES.length; save(); syncUI(); });
+  sndBtn.addEventListener('click', () => {
+    S.snd = (S.snd + 1) % SND_LABELS.length;
+    applySnd();
+    if (S.snd) {
+      if (!initAudio()) { S.snd = 0; sndBtn.querySelector('.v').textContent = '非対応'; return; }
+      try {
+        if (ac.state === 'running') soundTest();
+        else ac.resume().then(soundTest).catch(() => {});
+      } catch (e) {}
+    }
+    save(); syncUI();
+  });
+  clearBtn.addEventListener('click', () => {
+    cancelDemo(); wipeAll();
+    if (G) { buildGuide(); syncUI(); }
+  });
+
+  function setMode(m) {
+    S.mode = m;
+    S.life = S.mLife[m]; S.snd = S.mSnd[m]; applySnd();   // そのモードの初期値の余韻と音で始める
+    unlockAudio();
+    if (m === 3) S.idx[3] = order(3)[0];   // 星座は「はじめの星座」から
+    if (m === 4) resetFireflies(nowSec());
+    cancelDemo();
+    if (m > 0) hint.classList.add('gone');
+    settle = 2;
+    save(); buildGuide(); syncUI();
+  }
+  [...modesEl.children].forEach((b, i) => b.addEventListener('click', () => setMode(i)));
+  /* ---------- 星座の設定(表示する星座・はじめの星座) ---------- */
+  const ZODIAC = GUIDES[3].items;
+  ZODIAC.forEach((z, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'zchip';
+    const n = document.createElement('b'); n.textContent = z.name;
+    const r = document.createElement('span'); r.textContent = z.sub;
+    b.append(n, r);
+    b.addEventListener('click', () => {
+      if (S.zShow[i] && S.zShow.filter(Boolean).length === 1) return;   // 最後の1つは外せない
+      S.zShow[i] = !S.zShow[i];
+      syncZ();
+    });
+    zgrid.appendChild(b);
+  });
+  function syncZ() {
+    if (!S.zShow[S.zStart]) S.zStart = S.zShow.indexOf(true);
+    const count = S.zShow.filter(Boolean).length;
+    [...zgrid.children].forEach((b, i) => {
+      b.setAttribute('aria-pressed', String(S.zShow[i]));
+      b.disabled = S.zShow[i] && count === 1;
+    });
+    zStartSel.textContent = '';
+    ZODIAC.forEach((z, i) => {
+      if (!S.zShow[i]) return;
+      const op = document.createElement('option');
+      op.value = String(i); op.textContent = z.name + '(' + z.sub + ')';
+      zStartSel.appendChild(op);
+    });
+    zStartSel.value = String(S.zStart);
+    document.getElementById('zCount').textContent = count + ' / 12';
+  }
+  function openZ() { syncZ(); zsheet.hidden = false; document.getElementById('zDone').focus(); }
+  function closeZ() {
+    if (zsheet.hidden) return;
+    zsheet.hidden = true;
+    S.idx[3] = order(3)[0];
+    save(); buildGuide(); syncUI();
+    zsetBtn.focus();
+  }
+  zsetBtn.addEventListener('click', openZ);
+  zStartSel.addEventListener('change', () => { S.zStart = +zStartSel.value; });
+  document.getElementById('zAll').addEventListener('click', () => { S.zShow.fill(true); syncZ(); });
+  document.getElementById('zDone').addEventListener('click', closeZ);
+  zsheet.addEventListener('click', (e) => { if (e.target === zsheet) closeZ(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeZ(); closeSet(); } });
+
+  /* ---------- 設定(モードごとの余韻と音の初期値) ---------- */
+  const setBtn = document.getElementById('setBtn');
+  const ssheet = document.getElementById('ssheet');
+  const sgrid = document.getElementById('sgrid');
+  function makeSelect(labels, value, label, onChange) {
+    const sel = document.createElement('select');
+    sel.setAttribute('aria-label', label);
+    labels.forEach((t, i) => {
+      const op = document.createElement('option');
+      op.value = String(i); op.textContent = t;
+      sel.appendChild(op);
+    });
+    sel.value = String(value);
+    sel.addEventListener('change', () => onChange(+sel.value));
+    return sel;
+  }
+  function buildSettings() {
+    sgrid.textContent = '';
+    for (const t of ['', '余韻', '音']) {
+      const h = document.createElement('div'); h.className = 'shead'; h.textContent = t; sgrid.appendChild(h);
+    }
+    MODE_NAMES.forEach((name, m) => {
+      const n = document.createElement('div'); n.className = 'sname'; n.textContent = name;
+      const life = makeSelect(LIVES.map((l) => l.label), S.mLife[m], name + 'の余韻', (v) => {
+        S.mLife[m] = v;
+        if (m === S.mode) S.life = v;   // いま開いているモードには、すぐ反映する
+        save(); syncUI();
+      });
+      const snd = makeSelect(SND_LABELS, S.mSnd[m], name + 'の音', (v) => {
+        S.mSnd[m] = v;
+        if (m === S.mode) { S.snd = v; applySnd(); unlockAudio(); }
+        save(); syncUI();
+      });
+      sgrid.append(n, life, snd);
+    });
+  }
+  function openSet() { buildSettings(); ssheet.hidden = false; document.getElementById('sDone').focus(); }
+  function closeSet() {
+    if (ssheet.hidden) return;
+    ssheet.hidden = true;
+    setBtn.focus();
+  }
+  setBtn.addEventListener('click', openSet);
+  document.getElementById('sDone').addEventListener('click', closeSet);
+  ssheet.addEventListener('click', (e) => { if (e.target === ssheet) closeSet(); });
+
+  function stepGuide(d) {
+    if (S.mode < 1 || S.mode > 3) return;
+    S.idx[S.mode] = stepIndex(S.mode, d);
+    save(); buildGuide(); syncUI();
+  }
+  document.getElementById('prevBtn').addEventListener('click', () => stepGuide(-1));
+  document.getElementById('nextBtn').addEventListener('click', () => stepGuide(1));
+
+  /* ---------- ループ ---------- */
+  let last = 0;
+  function frame(ms) {
+    const now = ms / 1000;
+    let dt = now - last; last = now;
+    if (!(dt > 0)) dt = 1 / 60;
+    if (dt > 0.05) dt = 0.05;
+    updateDemo(now);
+    for (const [id, P] of pointers) advance(id, P, now, dt);
+    if (S.mode === 4) updateFireflies(now, dt);
+    runSequence(now, dt);
+    render(now);
+    requestAnimationFrame(frame);
+  }
+
+  sizeCanvas();
+  if (S.mode > 0) { demo = null; hint.style.transition = 'none'; hint.classList.add('gone'); }
+  S.idx[3] = order(3)[0];
+  applySnd();
+  if (S.mode === 4) resetFireflies(nowSec());
+  buildGuide();
+  syncUI();
+  sprites(S.pal);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawGuide).catch(() => {});
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
