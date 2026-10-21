@@ -2,6 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-3ttO/Y95BdpnmZr1CIA63eKCSwpX0BiDEtkqlHf4Ahc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -476,8 +478,20 @@
     mSnd: [1, 2, 1, 1, 2],    // 音:漢字と蛍は琴、自由・魔法陣・星座はガムラン
     life: 1, snd: 1           // いまの余韻と音(モードを切り替えると、そのモードの初期値に戻る)
   };
+  function sanitize(o) {
+    const int = (v) => (Number.isInteger(v) ? v : -1);
+    const ints = (a, n) => (Array.isArray(a) ? a.slice(0, n).map(int) : null);
+    return {
+      pal: int(o.pal), sym: int(o.sym), mode: int(o.mode), zStart: int(o.zStart),
+      mLife: ints(o.mLife, 5), mSnd: ints(o.mSnd, 5), idx: ints(o.idx, 4),
+      zShow: Array.isArray(o.zShow) && o.zShow.length === 12 && o.zShow.every((v) => typeof v === 'boolean') ? o.zShow : null
+    };
+  }
   try {
-    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    // 保存データは書き換えられている可能性もあるので、決まった形の整数と真偽値だけを受け付ける
+    const raw = localStorage.getItem(STORE_KEY);
+    const parsed = raw && raw.length < 4000 ? JSON.parse(raw) : null;
+    const saved = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? sanitize(parsed) : null;
     if (saved) {
       if (saved.pal >= 0 && saved.pal < PALETTES.length) S.pal = saved.pal | 0;
       if (saved.sym >= 0 && saved.sym < SYMS.length) S.sym = saved.sym | 0;
@@ -491,7 +505,7 @@
       if (saved.mode >= 0 && saved.mode <= 4) S.mode = saved.mode | 0;
       if (Array.isArray(saved.idx)) {
         for (let m = 1; m < GUIDES.length; m++) {
-          const v = saved.idx[m] | 0;
+          const v = saved.idx[m];
           if (v >= 0 && v < GUIDES[m].items.length) S.idx[m] = v;
         }
       }
