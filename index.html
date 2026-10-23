@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-c0NBdWd9K8uEKdNx7eihZwIOHBvy8dD4/wmWep9otJA='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
+<!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MFHZDAnfyhkITshf+wMkrVEkfAxus3QCvSrB131DrXE='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -163,6 +164,52 @@
     font: inherit; font-size: 14px;
   }
 
+  .notices {
+    position: fixed;
+    left: 50%; transform: translateX(-50%);
+    top: 0;
+    margin-top: calc(env(safe-area-inset-top, 0px) + 64px);
+    width: min(calc(100% - 16px), 430px);
+    display: flex; flex-direction: column; gap: 8px;
+    transition: opacity .5s ease;
+  }
+  .notices:empty { display: none; }
+  body.drawing .notices { opacity: .22; }
+  .newver-bar, .update-notice {
+    background: var(--ai);
+    border: 1px solid rgba(207, 224, 255, .55);
+    border-radius: 16px;
+    font-size: 13px; line-height: 1.7; letter-spacing: .03em;
+  }
+  .newver-bar { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; font-weight: 700; }
+  .newver-bar span { flex: 1; }
+  .newver-bar button, .update-btn {
+    min-height: 40px; padding: 0 14px;
+    border: 0; border-radius: 12px;
+    background: var(--moji); color: var(--ai-fukai);
+    font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .06em;
+    white-space: nowrap; cursor: pointer;
+  }
+  .update-notice { position: relative; padding: 12px 44px 12px 14px; }
+  .update-notice .ttl { font-weight: 700; margin-bottom: 4px; }
+  .update-notice .ver { font-size: 11px; font-weight: 700; color: var(--moji-usui); margin: 6px 0 0; }
+  .update-notice ul { margin: 0 0 6px; padding-left: 18px; }
+  .update-notice a, .appinfo a { color: var(--moji-usui); font-size: 12px; }
+  .update-close {
+    position: absolute; top: 4px; right: 4px;
+    width: 40px; height: 40px;
+    border: 0; background: none; color: var(--moji-usui);
+    font-size: 20px; line-height: 1; cursor: pointer;
+  }
+  .update-box { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--sen); }
+  .update-btn { width: 100%; height: 46px; background: rgba(233, 237, 249, .12); color: var(--moji); border: 1px solid var(--sen); }
+  .update-btn.primary { background: var(--moji); color: var(--ai-fukai); border-color: transparent; }
+  .update-btn:disabled { opacity: .5; cursor: default; }
+  .update-msg { margin: 10px 0 0; font-size: 13px; line-height: 1.7; }
+  .update-msg:empty { display: none; }
+  .appinfo { margin: 18px 0 2px; text-align: center; font-size: 12px; line-height: 1.9; color: var(--moji-usui); }
+  .appinfo .powered { font-size: 10.5px; letter-spacing: .05em; }
+
   .zset {
     position: fixed;
     left: 50%; transform: translateX(-50%);
@@ -301,7 +348,7 @@
   .opt:disabled { opacity: .35; cursor: default; }
   .opt.clear { flex: 0 0 auto; padding: 4px 10px; border-left: 1px solid var(--sen); border-radius: 0 14px 14px 0; }
 
-  .sw:focus-visible, .opt:focus-visible, .modes button:focus-visible, .nav button:focus-visible, .zset:focus-visible, .zchip:focus-visible, .textbtn:focus-visible, #zStart:focus-visible, .gear:focus-visible, .sgrid select:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 1px; }
+  .sw:focus-visible, .opt:focus-visible, .modes button:focus-visible, .nav button:focus-visible, .zset:focus-visible, .zchip:focus-visible, .textbtn:focus-visible, #zStart:focus-visible, .gear:focus-visible, .sgrid select:focus-visible, .newver-bar button:focus-visible, .update-btn:focus-visible, .update-close:focus-visible, .notices a:focus-visible, .appinfo a:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 1px; }
 
   @media (prefers-reduced-motion: reduce) {
     .hint, .bar, .sw i, .modes, .nav, #gd, .zset, .zchip { transition: none; }
@@ -335,6 +382,7 @@
   </svg>
 </button>
 </div>
+<div class="notices" id="notices"></div>
 <button class="zset" id="zsetBtn" type="button" hidden>表示する星座をえらぶ</button>
 
 <div class="nav" id="nav" hidden>
@@ -357,7 +405,20 @@
     <h3>モードごとの初期値</h3>
     <p class="snote">モードを切り替えると、ここで選んだ余韻と音で始まります。</p>
     <div class="sgrid" id="sgrid"></div>
+
+    <div class="update-box">
+      <h3>アプリの更新</h3>
+      <p class="snote">ホーム画面のアプリは、閉じても裏で止まっているだけで、自動では新しくなりません。開いたときに最新版を確認しますが、すぐ知りたいときはここで確認できます。</p>
+      <button class="update-btn" id="updCheckBtn" type="button">更新を確認</button>
+      <p class="update-msg" id="updMsg" aria-live="polite"></p>
+    </div>
+
     <button class="done" id="sDone" type="button">完了</button>
+    <p class="appinfo">
+      <span id="verText"></span><br>
+      <a id="changelogLink" target="_blank" rel="noopener noreferrer">更新履歴</a><br>
+      <span class="powered">Powered by SunaTrux</span>
+    </p>
   </div>
 </div>
 
@@ -400,6 +461,27 @@
   const BASE_ALPHA = 0.32;
   const WIPE_SEC = 0.7;
   const STORE_KEY = 'nazori:v1';
+
+  /* ---------- バージョン ---------- */
+  // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
+  const APP_VERSION = '1.1.0';
+  const APP_RELEASE_DATE = '2026-10-24';
+  const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
+  // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
+  const RELEASE_NOTES = {
+    '1.1.0': [
+      '設定の一番下に「アプリの更新」を追加。最新版があるか確かめて、その場で更新できます',
+      '新しいバージョンが出たら、画面の上でお知らせするように',
+      '一度開いておけば、電波の弱い場所でも起動するように'
+    ],
+    '1.0.2': [
+      '蛍を囲むと、大きく膨らんでから、はかなく消えるように'
+    ],
+    '1.0.1': [
+      '安全性を高めました(外部への通信を止め、保存データの読み込みを厳しく)'
+    ]
+  };
+  const SEEN_VERSION_KEY = 'nazori:seen-version';
 
   /* ---------- お手本(100×100 の枠に描いた線) ---------- */
   function pairs(n) { const o = []; for (let i = 0; i < n.length; i += 2) o.push([n[i], n[i + 1]]); return o; }
@@ -478,6 +560,7 @@
     mSnd: [1, 2, 1, 1, 2],    // 音:漢字と蛍は琴、自由・魔法陣・星座はガムラン
     life: 1, snd: 1           // いまの余韻と音(モードを切り替えると、そのモードの初期値に戻る)
   };
+  let hadSavedData = false;
   function sanitize(o) {
     const int = (v) => (Number.isInteger(v) ? v : -1);
     const ints = (a, n) => (Array.isArray(a) ? a.slice(0, n).map(int) : null);
@@ -490,6 +573,7 @@
   try {
     // 保存データは書き換えられている可能性もあるので、決まった形の整数と真偽値だけを受け付ける
     const raw = localStorage.getItem(STORE_KEY);
+    hadSavedData = !!raw;
     const parsed = raw && raw.length < 4000 ? JSON.parse(raw) : null;
     const saved = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? sanitize(parsed) : null;
     if (saved) {
@@ -1866,7 +1950,134 @@
     requestAnimationFrame(frame);
   }
 
+  /* ---------- バージョンのお知らせ・アプリの更新 ---------- */
+  let seenVersion = null;
+  try { seenVersion = localStorage.getItem(SEEN_VERSION_KEY); } catch (e) {}
+  function markVersionSeen() {
+    seenVersion = APP_VERSION;
+    try { localStorage.setItem(SEEN_VERSION_KEY, APP_VERSION); } catch (e) {}
+  }
+  // 初めて使う人にはお知らせを出さない(前の版から使っている人には、見た版の記録がなくても出す)
+  if (!hadSavedData) markVersionSeen();
+  function cmpVersion(a, b) {
+    const x = String(a).split('.'), y = String(b).split('.');
+    for (let i = 0; i < 3; i++) { const d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0); if (d) return d; }
+    return 0;
+  }
+  // GitHub Pages で公開しているときだけ、オフライン対応と新しい版の確認を動かす
+  const IS_HOSTED = location.protocol === 'https:' && /\.github\.io$/.test(location.hostname);
+  if (IS_HOSTED && 'serviceWorker' in navigator) {
+    try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {}
+  }
+  // 最新版を確実に読み込む(ブラウザのキャッシュを避けるため、一時的に ?u= を付けて開き直す)
+  function hardReload() {
+    const go = () => location.replace(location.pathname + '?u=' + Date.now());
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+        navigator.serviceWorker.getRegistration().then((reg) => {
+          if (reg && reg.update) reg.update().then(go, go); else go();
+        }, go);
+        return;
+      }
+    } catch (e) {}
+    go();
+  }
+  try { if (/[?&]u=\d+/.test(location.search) && history.replaceState) history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+
+  let newVersion = null;
+  // 公開中の index.html を読み、そこに書かれたバージョンを取り出す
+  function fetchLatestVersion() {
+    return fetch('index.html?check=' + Date.now(), { cache: 'no-store' })
+      .then((res) => (res.ok ? res.text() : ''))
+      .then((t) => { const m = /const APP_VERSION = '(\d+\.\d+\.\d+)'/.exec(t || ''); return m ? m[1] : null; });
+  }
+  let lastUpdateCheck = 0;
+  function checkForUpdate() {
+    if (!IS_HOSTED || !window.fetch) return;
+    if (Date.now() - lastUpdateCheck < 60 * 1000) return;
+    lastUpdateCheck = Date.now();
+    fetchLatestVersion().then((v) => {
+      if (v && cmpVersion(v, APP_VERSION) > 0 && newVersion !== v) { newVersion = v; renderNotices(); }
+    }).catch(() => {});
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+  setTimeout(checkForUpdate, 3000);
+
+  const noticesEl = document.getElementById('notices');
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function renderNotices() {
+    noticesEl.textContent = '';
+    if (newVersion) {   // 新しい版がある
+      const bar = el('div', 'newver-bar');
+      bar.append(el('span', '', '新しいバージョン v' + newVersion + ' があります'));
+      const btn = el('button', '', '再読み込み'); btn.type = 'button';
+      btn.addEventListener('click', hardReload);
+      bar.append(btn);
+      noticesEl.append(bar);
+    }
+    if (seenVersion !== APP_VERSION) {   // アップデートしたばかり
+      // 前回見た版より新しい版のお知らせを、新しい順にまとめて出す(最大3版分)
+      const vers = Object.keys(RELEASE_NOTES).filter((v) =>
+        cmpVersion(v, APP_VERSION) <= 0 && (!seenVersion || cmpVersion(v, seenVersion) > 0)
+      ).sort((a, b) => cmpVersion(b, a)).slice(0, 3);
+      const box = el('div', 'update-notice');
+      box.setAttribute('role', 'status');
+      const close = el('button', 'update-close', '×'); close.type = 'button';
+      close.setAttribute('aria-label', 'お知らせを閉じる');
+      close.addEventListener('click', () => { markVersionSeen(); renderNotices(); });
+      box.append(close, el('div', 'ttl', 'v' + APP_VERSION + ' にアップデートしました'));
+      if (vers.length === 0) {
+        const ul = el('ul'); ul.append(el('li', '', '細かな修正・改善を行いました')); box.append(ul);
+      }
+      vers.forEach((v) => {
+        if (vers.length > 1) box.append(el('div', 'ver', 'v' + v));
+        const ul = el('ul');
+        RELEASE_NOTES[v].forEach((n) => ul.append(el('li', '', n)));
+        box.append(ul);
+      });
+      const a = el('a', '', 'すべての更新履歴を見る');
+      a.href = CHANGELOG_URL; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      box.append(a);
+      noticesEl.append(box);
+    }
+  }
+
+  // 設定の「アプリの更新」
+  const updCheckBtn = document.getElementById('updCheckBtn');
+  const updMsg = document.getElementById('updMsg');
+  let updState = '';
+  function syncUpdateBox(version) {
+    updCheckBtn.disabled = updState === 'checking';
+    updCheckBtn.classList.toggle('primary', updState === 'new');
+    updCheckBtn.textContent = updState === 'checking' ? '確認中…' : updState === 'new' ? '今すぐ更新する' : '更新を確認';
+    updMsg.className = 'update-msg';
+    updMsg.textContent =
+      updState === 'new' ? '新しいバージョン v' + version + ' があります(今は v' + APP_VERSION + ')' :
+      updState === 'latest' ? '✓ 最新版です(v' + APP_VERSION + ')' :
+      updState === 'error' ? '確認できませんでした。ネットにつながっているか確かめて、もう一度お試しください。' :
+      updState === 'unsupported' ? 'この画面(プレビューなど)では確認できません。公開版のアプリで確認してください。' : '';
+  }
+  updCheckBtn.addEventListener('click', () => {
+    if (updState === 'new') { hardReload(); return; }
+    if (!IS_HOSTED || !window.fetch) { updState = 'unsupported'; syncUpdateBox(); return; }
+    updState = 'checking'; syncUpdateBox();
+    fetchLatestVersion().then((v) => {
+      if (!v) updState = 'error';
+      else if (cmpVersion(v, APP_VERSION) > 0) { updState = 'new'; newVersion = v; renderNotices(); }
+      else updState = 'latest';
+      syncUpdateBox(v);
+    }).catch(() => { updState = 'error'; syncUpdateBox(); });
+  });
+  document.getElementById('verText').textContent = 'バージョン ' + APP_VERSION + '(' + APP_RELEASE_DATE + ')';
+  document.getElementById('changelogLink').href = CHANGELOG_URL;
+
   sizeCanvas();
+  renderNotices();
   if (S.mode > 0) { demo = null; hint.style.transition = 'none'; hint.classList.add('gone'); }
   S.idx[3] = order(3)[0];
   applySnd();
