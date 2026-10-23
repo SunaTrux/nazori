@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MFHZDAnfyhkITshf+wMkrVEkfAxus3QCvSrB131DrXE='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-svDMw82cHWKy8Bly/FM271EnYcaj3FWy0v2ovwnv/nc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -464,11 +464,14 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.1.0';
+  const APP_VERSION = '1.1.1';
   const APP_RELEASE_DATE = '2026-10-24';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.1.1': [
+      '蛍を囲んで消えるときの光を、まぶしすぎないよう控えめに'
+    ],
     '1.1.0': [
       '設定の一番下に「アプリの更新」を追加。最新版があるか確かめて、その場で更新できます',
       '新しいバージョンが出たら、画面の上でお知らせするように',
@@ -1261,23 +1264,24 @@
           // 膨らむ:明るさを保ったまま、ゆっくり大きくなる
           const q = e / FLY_SWELL, ease = 1 - Math.pow(1 - q, 2.2);
           grow = 1 + ease * (FLY_GROW - 1);
-          b = b + (1 - b) * Math.min(1, q * 2.5);   // すぐに、いちばん明るく灯る
+          b = b + (0.6 - b) * Math.min(1, q * 2.5);   // ほどよい明るさに落ち着く(まぶしくしない)
+          coreK = 1 - 0.3 * Math.min(1, q * 2);         // 芯は膨らむにつれて控えめに
         } else {
           // 消える:まだ少しずつ広がりながら、芯から先に淡くなり、光の輪だけがしばらく残る
           const q = Math.min(1, (e - FLY_SWELL) / FLY_FADE);
           grow = FLY_GROW + q * 3;
-          b = 1;
+          b = 0.6;
           k *= Math.pow(1 - q, 1.6) * (1 - 0.12 * Math.sin(q * 19) * q);   // 消えぎわに、かすかに揺らぐ
-          coreK = Math.pow(1 - q, 2.5);
+          coreK = 0.7 * Math.pow(1 - q, 2.5);
         }
       }
       const img = set[f.ci];
-      const halo = 54 * f.size * (0.7 + 0.3 * b) * grow, core = 15 * f.size * (1 + (grow - 1) * 0.55);
-      g.globalAlpha = 0.5 * b * k / (1 + (grow - 1) * 0.12);   // 大きくなるほど、まわりの光はやわらかく
+      const halo = 54 * f.size * (0.7 + 0.3 * b) * grow, core = 15 * f.size * (1 + (grow - 1) * 0.3);
+      g.globalAlpha = 0.5 * b * k / (1 + (grow - 1) * 0.2);   // 大きくなるほど、まわりの光はやわらかく
       g.drawImage(img, f.x - halo / 2, f.y - halo / 2, halo, halo);
       if (grow > 1.01) {   // 膨らんだ蛍は、幅いっぱいにやわらかく光る玉になる
         const ball = halo * 0.85;
-        g.globalAlpha = 0.34 * k * Math.min(1, (grow - 1) / 2);
+        g.globalAlpha = 0.22 * k * Math.min(1, (grow - 1) / 2);
         g.drawImage(fatSet[f.ci], f.x - ball / 2, f.y - ball / 2, ball, ball);
       }
       g.globalAlpha = Math.min(1, 0.25 + 0.75 * b) * k * coreK;
