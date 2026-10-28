@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-EmnV7KbnwsX/W3KWLisf4Ym9ZQqKLt4z36QTmDjGLQM='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Vyr+nsLQY7yeuWJt92DvGJqFI+84VyJfpnA1ACLZp4A='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -208,6 +208,10 @@
     text-decoration: none; box-sizing: border-box;
   }
   .snote.small { margin: 8px 0 0; font-size: 11px; }
+  .reset-confirm[hidden] { display: none; }
+  .reset-row { display: flex; gap: 8px; margin-top: 10px; }
+  .reset-row .update-btn { flex: 1; }
+  .update-btn.danger { background: rgba(255, 150, 140, .16); border-color: rgba(255, 170, 160, .55); color: #ffd9d4; }
   .update-btn.primary { background: var(--moji); color: var(--ai-fukai); border-color: transparent; }
   .update-btn:disabled { opacity: .5; cursor: default; }
   .update-msg { margin: 10px 0 0; font-size: 13px; line-height: 1.7; }
@@ -245,6 +249,13 @@
     background: var(--ai);
     border: 1px solid var(--sen); border-bottom: 0;
     border-radius: 22px 22px 0 0;
+  }
+  .appname {
+    margin: 0 0 10px;
+    text-align: center;
+    font-family: var(--mincho);
+    font-size: 12px; letter-spacing: .12em;
+    color: var(--moji-usui);
   }
   .sheet h2 {
     margin: 0 0 16px;
@@ -406,6 +417,7 @@
 
 <div class="sheet-wrap" id="ssheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+    <p class="appname">何もしないをするアプリ「なぞり」</p>
     <h2 id="sTitle">設定</h2>
     <h3>モードごとの初期値</h3>
     <p class="snote">モードを切り替えると、ここで選んだ余韻と音で始まります。</p>
@@ -423,6 +435,19 @@
       <p class="snote">ホーム画面のアプリは、閉じても裏で止まっているだけで、自動では新しくなりません。開いたときに最新版を確認しますが、すぐ知りたいときはここで確認できます。</p>
       <button class="update-btn" id="updCheckBtn" type="button">更新を確認</button>
       <p class="update-msg" id="updMsg" aria-live="polite"></p>
+    </div>
+
+    <div class="update-box">
+      <h3>初期状態に戻す</h3>
+      <p class="snote">色やモード、余韻と音の初期値、星座の設定などを、はじめて開いたときの状態に戻します。</p>
+      <button class="update-btn" id="resetBtn" type="button">初期状態に戻す</button>
+      <div class="reset-confirm" id="resetConfirm" hidden>
+        <p class="update-msg">すべての設定が元に戻ります。よろしいですか?</p>
+        <div class="reset-row">
+          <button class="update-btn" id="resetCancel" type="button">やめる</button>
+          <button class="update-btn danger" id="resetOk" type="button">戻す</button>
+        </div>
+      </div>
     </div>
 
     <button class="done" id="sDone" type="button">完了</button>
@@ -476,14 +501,19 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.2.0';
-  const APP_RELEASE_DATE = '2026-10-27';
+  const APP_VERSION = '1.3.0';
+  const APP_RELEASE_DATE = '2026-10-29';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
   const FEEDBACK_URL = 'https://tally.so/r/9qL0A4';
   const FEEDBACK_APP_NAME = 'なぞり';
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.3.0': [
+      '魔法陣では、はじめからパッドの音が鳴るようにしました',
+      '設定に「初期状態に戻す」を追加しました',
+      '設定の上に、アプリの名前を小さく入れました'
+    ],
     '1.2.0': [
       '設定に「感想を送る」を追加しました。よかったら使ってみての感想を聞かせてください'
     ],
@@ -578,15 +608,16 @@
     pal: 0, sym: 0, mode: 0, idx: [0, 0, 0, 0], zShow: Array(12).fill(true), zStart: 0,
     // モードごとの初期値(設定で変えられる)。音は 0 オフ、1 ガムラン、2 琴、3 パッド、4 ランダム
     mLife: [1, 1, 1, 1, 1],   // 余韻:どのモードも「ふつう」
-    mSnd: [1, 2, 1, 1, 2],    // 音:漢字と蛍は琴、自由・魔法陣・星座はガムラン
+    mSnd: [1, 2, 3, 1, 2],    // 音:漢字と蛍は琴、魔法陣はパッド、自由と星座はガムラン
     life: 1, snd: 1           // いまの余韻と音(モードを切り替えると、そのモードの初期値に戻る)
   };
   let hadSavedData = false;
+  const SCHEMA_VERSION = 2;   // 保存データの形式番号。初期値や形を変えるときに上げ、読み込み時に古い形を直す
   function sanitize(o) {
     const int = (v) => (Number.isInteger(v) ? v : -1);
     const ints = (a, n) => (Array.isArray(a) ? a.slice(0, n).map(int) : null);
     return {
-      pal: int(o.pal), sym: int(o.sym), mode: int(o.mode), zStart: int(o.zStart),
+      v: int(o.v), pal: int(o.pal), sym: int(o.sym), mode: int(o.mode), zStart: int(o.zStart),
       mLife: ints(o.mLife, 5), mSnd: ints(o.mSnd, 5), idx: ints(o.idx, 4),
       zShow: Array.isArray(o.zShow) && o.zShow.length === 12 && o.zShow.every((v) => typeof v === 'boolean') ? o.zShow : null
     };
@@ -604,6 +635,8 @@
         if (Array.isArray(saved.mLife) && saved.mLife[m] >= 0 && saved.mLife[m] < LIVES.length) S.mLife[m] = saved.mLife[m] | 0;
         if (Array.isArray(saved.mSnd) && saved.mSnd[m] >= 0 && saved.mSnd[m] <= 4) S.mSnd[m] = saved.mSnd[m] | 0;
       }
+      // v1.3.0 で魔法陣の初期の音をガムランからパッドに変えた。前の初期値のままの人は、新しい初期値にそろえる
+      if (saved.v < 2 && S.mSnd[2] === 1) S.mSnd[2] = 3;
       if (Array.isArray(saved.zShow) && saved.zShow.length === 12 && saved.zShow.some(Boolean)) S.zShow = saved.zShow.map(Boolean);
       if (saved.zStart >= 0 && saved.zStart < 12) S.zStart = saved.zStart | 0;
       if (!S.zShow[S.zStart]) S.zStart = S.zShow.indexOf(true);
@@ -618,7 +651,7 @@
   } catch (e) { /* 保存が使えなくてもそのまま動く */ }
   S.life = S.mLife[S.mode]; S.snd = S.mSnd[S.mode];
   function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ pal: S.pal, sym: S.sym, mode: S.mode, idx: S.idx, zShow: S.zShow, zStart: S.zStart, mLife: S.mLife, mSnd: S.mSnd })); } catch (e) {}
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ v: SCHEMA_VERSION, pal: S.pal, sym: S.sym, mode: S.mode, idx: S.idx, zShow: S.zShow, zStart: S.zStart, mLife: S.mLife, mSnd: S.mSnd })); } catch (e) {}
   }
 
   /* ---------- キャンバス ---------- */
@@ -1939,7 +1972,11 @@
       sgrid.append(n, life, snd);
     });
   }
-  function openSet() { buildSettings(); ssheet.hidden = false; document.getElementById('sDone').focus(); }
+  function openSet() {
+    buildSettings(); ssheet.hidden = false;
+    document.getElementById('sDone').focus({ preventScroll: true });
+    ssheet.querySelector('.sheet').scrollTop = 0;   // アプリ名と見出しが見える一番上から開く
+  }
   function closeSet() {
     if (ssheet.hidden) return;
     ssheet.hidden = true;
@@ -2136,6 +2173,23 @@
       'アプリのバージョンと端末の種類(v' + APP_VERSION + ' / ' + feedbackDeviceInfo() + ')も一緒に送られます。描いた線や設定は送られません。';
   }
   syncFeedback();
+
+  // ---- 初期状態に戻す ----
+  const resetBtn = document.getElementById('resetBtn');
+  const resetConfirm = document.getElementById('resetConfirm');
+  function showResetConfirm(on) {
+    resetBtn.hidden = on;
+    resetConfirm.hidden = !on;
+    (on ? document.getElementById('resetCancel') : resetBtn).focus();
+  }
+  resetBtn.addEventListener('click', () => showResetConfirm(true));
+  document.getElementById('resetCancel').addEventListener('click', () => showResetConfirm(false));
+  document.getElementById('resetOk').addEventListener('click', () => {
+    // 保存した設定だけを消して開き直す(見たお知らせの記録は残すので、アップデートのお知らせは出ない)
+    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    location.replace(location.pathname + location.hash);
+  });
+  setBtn.addEventListener('click', () => { resetBtn.hidden = false; resetConfirm.hidden = true; });
   setBtn.addEventListener('click', syncFeedback);
 
   sizeCanvas();
