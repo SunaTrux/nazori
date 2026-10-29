@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-fMWOYdcixbQfnxAWUoyXTPxglYNcDZIY8uKIFFm6SP0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-NCGgCqrnwjwQr7PdxvHqX2XBjvFYG92IUrB5jnCCA1s='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -32,18 +32,31 @@
     --maru: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
 
     box-sizing: border-box;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* 画面下のバーとの間の余白(iPhoneのホームバーの分)。ホーム画面のアプリでは少し詰める */
+    --bottom-gap: calc(env(safe-area-inset-bottom, 0px) + 10px);
   }
   *, *::before, *::after { box-sizing: inherit; }
-  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html {
+    height: 100%; overflow: hidden;
+    background: var(--ai-fukai);
+    background-image: radial-gradient(130% 95% at 50% 38%, var(--ai-akari) 0%, var(--ai) 46%, var(--ai-fukai) 100%);
+    background-attachment: fixed;
+  }
+  /* iPhoneのホーム画面アプリ(時計・電池の上まで使う表示)では、ページが画面より短いと、iOSが画面の高さを
+     上の余白(ステータスバー)ぶん短く扱い、下のバーが浮いて、その下に余白ができてしまう。
+     ページの高さを上の余白ぶん足して、画面の一番下まで使えるようにする(プレイヤーズセットリストと同じ直し方) */
+  html.is-standalone {
+    height: calc(100% + env(safe-area-inset-top, 0px));
+    --bottom-gap: calc(max(0px, env(safe-area-inset-bottom, 0px) - 18px) + 10px);
+  }
+  /* ホーム画面のアプリでは、描く場所も画面の一番下まで広げる */
+  html.is-standalone #cv, html.is-standalone #gd { height: 100lvh; }
   body {
     height: 100%;
     margin: 0;
     overflow: hidden;
     overscroll-behavior: none;
-    background: var(--ai-fukai);
-    background-image: radial-gradient(130% 95% at 50% 38%, var(--ai-akari) 0%, var(--ai) 46%, var(--ai-fukai) 100%);
+    background: transparent;
     color: var(--moji);
     font-family: var(--maru);
     -webkit-user-select: none; user-select: none;
@@ -122,7 +135,7 @@
     position: fixed;
     left: 50%; transform: translateX(-50%);
     bottom: 0;
-    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);
+    margin-bottom: calc(var(--bottom-gap) + 68px);
     display: flex; align-items: center; gap: 8px;
     transition: opacity .5s ease;
   }
@@ -144,7 +157,6 @@
     font-size: 21px; letter-spacing: .16em; line-height: 1.3;
   }
   .nav .name span { font-size: 11px; letter-spacing: .1em; color: var(--moji-usui); white-space: nowrap; }
-  body.drawing .modes, body.drawing .nav { opacity: .22; }
 
   .gear {
     flex: none;
@@ -157,7 +169,6 @@
     -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
     transition: opacity .5s ease;
   }
-  body.drawing .gear { opacity: .22; }
   .snote { margin: 6px 0 14px; font-size: 12px; line-height: 1.7; letter-spacing: .04em; color: var(--moji-usui); }
   .sgrid {
     display: grid;
@@ -183,7 +194,6 @@
     transition: opacity .5s ease;
   }
   .notices:empty { display: none; }
-  body.drawing .notices { opacity: .22; }
   .newver-bar, .update-notice {
     background: var(--ai);
     border: 1px solid rgba(207, 224, 255, .55);
@@ -254,7 +264,6 @@
     transition: opacity .5s ease;
   }
   .zset[hidden] { display: none; }
-  body.drawing .zset { opacity: .22; }
 
   .sheet-wrap {
     position: fixed; inset: 0;
@@ -344,7 +353,7 @@
     position: fixed;
     left: 50%; transform: translateX(-50%);
     bottom: 0;
-    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    margin-bottom: var(--bottom-gap);
     width: min(calc(100% - 16px), 430px);
     display: flex; align-items: center; justify-content: space-between;
     flex-wrap: wrap;
@@ -356,7 +365,6 @@
     -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
     transition: opacity .5s ease;
   }
-  body.drawing .bar { opacity: .22; }
 
   .swatches { display: flex; gap: 2px; align-items: center; }
   .sw {
@@ -395,7 +403,15 @@
 
   .sw:focus-visible, .opt:focus-visible, .modes button:focus-visible, .nav button:focus-visible, .zset:focus-visible, .zchip:focus-visible, .textbtn:focus-visible, #zStart:focus-visible, .gear:focus-visible, .sgrid select:focus-visible, .newver-bar button:focus-visible, .update-btn:focus-visible, a.feedback-btn:focus-visible, .sheet-x:focus-visible, .share-text:focus-visible, .update-close:focus-visible, .notices a:focus-visible, .appinfo a:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 1px; }
 
+  /* なぞっている間は、タブとツールバーをすっと隠して、画面をすべて使う。指を離すと、少し間をおいて戻る */
+  .topbar, .nav, .zset, .notices, .bar { transition: opacity .5s ease .7s; }
+  body.drawing .topbar, body.drawing .nav, body.drawing .zset, body.drawing .notices, body.drawing .bar {
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease 0s;
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .topbar, .nav, .zset, .notices, .bar, body.drawing .topbar, body.drawing .nav, body.drawing .zset, body.drawing .notices, body.drawing .bar { transition: none; }
     .hint, .bar, .sw i, .modes, .nav, #gd, .zset, .zchip { transition: none; }
   }
   .done:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 3px;
@@ -550,7 +566,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.8.0';
+  const APP_VERSION = '1.9.0';
   const APP_RELEASE_DATE = '2026-10-29';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
@@ -566,6 +582,10 @@
     SHARE_URL;
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.9.0': [
+      'なぞっている間は、上のタブと下のツールバーを隠して、画面をすべて使えるようにしました(指を離すと戻ります)',
+      'ホーム画面から開いたとき、下のツールバーの下にできていた余白をなくしました'
+    ],
     '1.8.0': [
       'スマホでは、設定から「ホーム画面に追加」できるようにしました'
     ],
@@ -763,7 +783,8 @@
       keep.getContext('2d').drawImage(bake, 0, 0);
     }
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = window.innerWidth; H = window.innerHeight;
+    const r = cv.getBoundingClientRect();
+    W = Math.round(r.width) || window.innerWidth; H = Math.round(r.height) || window.innerHeight;
     for (const c of [cv, layer, gd, bake, bakeOld]) {
       c.width = Math.max(1, Math.round(W * dpr));
       c.height = Math.max(1, Math.round(H * dpr));
@@ -2417,6 +2438,9 @@
   document.getElementById('shareCopy').addEventListener('click', () => copyText(shareTa.value, '文章をコピーしました'));
   setBtn.addEventListener('click', syncFeedback);
 
+  function syncStandalone() { document.documentElement.classList.toggle('is-standalone', isStandaloneApp()); }
+  syncStandalone();
+  try { window.matchMedia('(display-mode: standalone)').addEventListener('change', () => { syncStandalone(); sizeCanvas(); }); } catch (e) {}
   sizeCanvas();
   renderNotices();
   if (S.mode > 0) { demo = null; hint.style.transition = 'none'; hint.classList.add('gone'); }
