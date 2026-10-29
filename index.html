@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bZcgsgDMsNlkTEzCeNxS7r8z5qTG2wub1iI8GVSxsuE='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-UcKOEC6rb64e5k0VINJjaCovBHH3qhh0IFB4PFKQQWg='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -56,6 +56,7 @@
     margin: 0;
     overflow: hidden;
     overscroll-behavior: none;
+    position: fixed; inset: 0;   /* アプリの中のブラウザでも、ページそのものが動かないように */
     background: transparent;
     color: var(--moji);
     font-family: var(--maru);
@@ -618,13 +619,14 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.12.1';
+  const APP_VERSION = '1.12.2';
   const APP_RELEASE_DATE = '2026-10-29';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
   const FEEDBACK_URL = 'https://tally.so/r/9qL0A4';
   const FEEDBACK_APP_NAME = 'なぞり';
-  const SHARE_URL = 'https://sunatrux.github.io/nazori/';
+  // ?openExternalBrowser=1 を付けると、LINE で受け取った人が開いたとき、LINE の中ではなく Safari や Chrome で開く
+  const SHARE_URL = 'https://sunatrux.github.io/nazori/?openExternalBrowser=1';
   const SHARE_TEXT =
     '何もしないをするアプリ「なぞり」\n' +
     'ただ画面をなぞるだけ\n' +
@@ -634,6 +636,10 @@
     SHARE_URL;
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.12.2': [
+      'LINE の中で開いたとき、上下になぞると画面ごと動いてしまうのを抑えました',
+      '「友だちにこのアプリを教える」で送ったURLを LINE で開くと、Safari や Chrome で開くようにしました'
+    ],
     '1.12.1': [
       '「友だちにこのアプリを教える」の紹介文を新しくしました'
     ],
@@ -2076,6 +2082,12 @@
   for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(ev, unlockAudio, true);
   cv.addEventListener('pointercancel', release);
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  // LINE などアプリの中で開くブラウザでは、なぞる指の動きでページごと動いてしまうことがあるので、
+  // 描く場所での指の動きは、ページのスクロールや引っぱりに使わせない
+  for (const ev of ['touchstart', 'touchmove']) cv.addEventListener(ev, (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', (e) => {
+    if (e.cancelable && !e.target.closest('.sheet')) e.preventDefault();   // 設定などの中は、ふつうにスクロールできるように
+  }, { passive: false });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   window.addEventListener('blur', () => {
     for (const P of pointers.values()) P.down = false;
@@ -2327,7 +2339,7 @@
     } catch (e) {}
     go();
   }
-  try { if (/[?&]u=\d+/.test(location.search) && history.replaceState) history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+  try { if (/[?&](u=\d+|openExternalBrowser=)/.test(location.search) && history.replaceState) history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
 
   let newVersion = null;
   // 公開中の index.html を読み、そこに書かれたバージョンを取り出す
