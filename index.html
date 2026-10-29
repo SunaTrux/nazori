@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-TL7kzBn4/6FDc4ovkU7LIBSZtJR0CNa44Nj7eI+9yzw='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uCl3opm52omSAsepfkyeGLvnflCX2hSh8D7elZXnaT4='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -119,7 +119,8 @@
     transition: opacity .5s ease;
   }
   .nav[hidden] { display: none; }
-  .nav.solo button { visibility: hidden; }
+  .nav.solo button { display: none; }   /* 蛍モードは前後のお手本がないので、見出しだけを中央に */
+  .nav.solo .name b { white-space: nowrap; letter-spacing: .12em; }
   .nav button {
     width: 44px; height: 44px;
     border-radius: 50%;
@@ -533,7 +534,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.5.0';
+  const APP_VERSION = '1.5.1';
   const APP_RELEASE_DATE = '2026-10-29';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
@@ -547,6 +548,9 @@
     SHARE_URL;
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.5.1': [
+      '蛍モードに「ホタルと何もしない」という見出しを付けました'
+    ],
     '1.5.0': [
       '蛍は、指が近づくとするりと逃げるようになりました',
       '輪で囲むと一瞬消えて、輪の外でやさしく赤く灯ってから消えていきます'
@@ -1935,7 +1939,7 @@
     [...modesEl.children].forEach((b, i) => b.setAttribute('aria-checked', String(i === S.mode)));
     nav.hidden = !guiding && !hotaru;
     nav.classList.toggle('solo', hotaru);
-    if (hotaru) { gName.textContent = '蛍'; gSub.textContent = '指で囲むと、はかなく消えます'; }
+    if (hotaru) { gName.textContent = 'ホタルと何もしない'; gSub.textContent = '指で囲むと、はかなく消えます'; }
     if (guiding) {
       const items = GUIDES[S.mode].items, i = S.idx[S.mode], o = order(S.mode);
       gName.textContent = items[i].name;
