@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wIH9u9y3FojoVKUR0yBRXwDnnP1RFKxoUK39CzhQMSc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-4uHhqvh0pPEDqkpVU/ekhqu6UV8p7DXArjbFMkYPUMo='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -426,8 +426,8 @@
   /* 下のツールバー(とお手本の名前)は、なぞりはじめると隠れたまま。
      タブを切り替えるか、いちばん下をダブルタップすると戻る */
   .nav, .bar { transition: opacity .4s ease; }
-  /* 星座モードでは、牡羊座などの名前は覚えるのに使うので、なぞっている間も隠さない */
-  body.bars-off:not(.m-zodiac) .nav, body.bars-off .bar {
+  /* お手本(漢字・魔法陣・星座)の名前と ‹ › は、なぞっている間も隠さない。蛍の見出しだけ隠す */
+  body.bars-off.m-hotaru .nav, body.bars-off .bar {
     opacity: 0; pointer-events: none;
     transition: opacity .25s ease;
   }
@@ -620,7 +620,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.12.3';
+  const APP_VERSION = '1.12.4';
   const APP_RELEASE_DATE = '2026-10-29';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
@@ -637,6 +637,10 @@
     SHARE_URL;
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.12.4': [
+      '漢字と魔法陣でも、なぞっている間、下のお手本の名前を隠さないようにしました',
+      '長押ししたときの光を、まぶしすぎないように抑えました'
+    ],
     '1.12.3': [
       '星座モードでは、なぞっている間も、下の星座の名前(牡羊座など)を隠さないようにしました'
     ],
@@ -952,7 +956,9 @@
     const c1 = Math.min(1, P.charge || 0);
     const t = clamp((P.size - 50) / 40, 0, 1);
     const life = P.real ? LIVES[S.life].sec : Math.min(LIVES[S.life].sec, 8);   // お手本の一筆は必ず消える
-    const k1 = (1 + c1 * 0.7) * (1 - t), k2 = 0.72 * (1 + c1 * 0.3) * t;
+    // 太い線ほど広い範囲が光るので、太さに応じて明るさを抑える(まぶしくならないように)
+    const soft = 1 / (1 + Math.max(0, P.size - 60) / 600);
+    const k1 = (1 + c1 * 0.3) * (1 - t) * soft, k2 = 0.72 * t * soft;
     if (life === Infinity) {
       if (t < 1) bakeStamp(sprites(P.pal)[ci], x, y, P.size, BASE_ALPHA * k1);
       if (t > 0) bakeStamp(sprites(P.pal, true)[ci], x, y, P.size, BASE_ALPHA * k2);
@@ -1222,12 +1228,13 @@
       P.cpos += dt * 3;
       const img = sprites(P.pal)[Math.floor(P.cpos) % STEPS];
       if (!P.blot) {
-        P.blot = { spark: false, x: P.bx, y: P.by, born: now, life: LIVES[S.life].sec, size: P.size, k: 1.3, img, ph: P.phase };
+        P.blot = { spark: false, x: P.bx, y: P.by, born: now, life: LIVES[S.life].sec, size: P.size, k: 1, img, ph: P.phase };
         stamps.push(P.blot);
         P.ripT = 0;
       }
       P.blot.x = P.bx; P.blot.y = P.by; P.blot.born = now;
       P.blot.size = P.size * 1.3; P.blot.img = img;
+      P.blot.k = 1 / (1 + Math.max(0, P.size - 60) / 400);   // 指の下の光も、大きくなるほど控えめに
       P.ripT -= dt;
       if (P.ripT <= 0) {
         P.ripT = 0.5; addRing(P, now);
@@ -1313,7 +1320,7 @@
 
       if (s.ring) {
         const f = 1 - a, e = 1 - f * f;
-        const al0 = f * Math.sqrt(f) * 0.3 * m / Math.sqrt(s.wk);
+        const al0 = f * Math.sqrt(f) * 0.2 * m / Math.pow(s.wk, 0.75);   // 波紋が重なっても、画面全体が明るくなりすぎないように
         if (al0 <= 0.003) continue;
         const r = s.r0 + (s.r1 - s.r0) * e;
         const wd = (24 + a * 64) * s.wk;                 // 広がるほど帯が太く、淡くにじむ
@@ -2129,7 +2136,7 @@
   });
 
   function syncUI() {
-    document.body.classList.toggle('m-zodiac', S.mode === 3);
+    document.body.classList.toggle('m-hotaru', S.mode === 4);
     [...swWrap.children].forEach((b, i) => b.setAttribute('aria-checked', String(i === S.pal)));
     const guiding = S.mode >= 1 && S.mode <= 3;
     const hotaru = S.mode === 4;
