@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-AN9DjpvcBvkFukRkB4WAtcHcLIJlJhM34iLsxBgs6nE='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bZcgsgDMsNlkTEzCeNxS7r8z5qTG2wub1iI8GVSxsuE='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -618,7 +618,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.12.0';
+  const APP_VERSION = '1.12.1';
   const APP_RELEASE_DATE = '2026-10-29';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
@@ -627,13 +627,16 @@
   const SHARE_URL = 'https://sunatrux.github.io/nazori/';
   const SHARE_TEXT =
     '何もしないをするアプリ「なぞり」\n' +
-    '\n' +
+    'ただ画面をなぞるだけ\n' +
     '画面を指でなぞると、色鮮やかな軌跡に。なぞりに合わせて聞こえる音も心地良い。\n' +
     '\n' +
-    'インストール不要、ログイン不要の安全設計。ブラウザで開いたらホーム画面に追加していつでもなぞれる。\n' +
+    '※インストール不要、ログイン不要の安全設計。ブラウザで開いたらホーム画面に追加していつでもなぞれる。\n' +
     SHARE_URL;
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.12.1': [
+      '「友だちにこのアプリを教える」の紹介文を新しくしました'
+    ],
     '1.12.0': [
       '自由モードのタブの下は「フリーハンド」「左右対称」「螺旋」「万華鏡」と表示し、左右の ‹ › で切り替えられるようにしました'
     ],
