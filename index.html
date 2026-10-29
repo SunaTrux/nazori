@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5TuQsiXmvaG9L4dXGdFW7mfth09dT/otrLBOc32Fo+Y='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-3EQemd4LXYEKNOqPRKQ+Lk70VT/Ki4emTtDDjkdQdQg='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'none'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -534,7 +534,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.6.0';
+  const APP_VERSION = '1.6.1';
   const APP_RELEASE_DATE = '2026-10-29';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
@@ -543,11 +543,15 @@
   const SHARE_URL = 'https://sunatrux.github.io/nazori/';
   const SHARE_TEXT =
     '何もしないをするアプリ「なぞり」\n' +
-    '画面を指でなぞると、光の線がゆらぎながら消えていきます。漢字や星座をなぞったり、蛍を指で囲んだり。ぼんやりしたいときにどうぞ。\n' +
-    'インストールはいらず、ブラウザで開くだけで使えます。描いたものはどこにも送られません。\n' +
+    '画面を指でなぞると、光の線がゆらぎながら消えていきます。漢字や星座をなぞったり、蛍を指で囲んだり。\n' +
+    'なぞるたびに、ガムランや琴、やわらかなシンセの音が鳴ります。音色にもこだわりました。\n' +
+    'インストールはいらず、ブラウザで開くだけ。描いたものはどこにも送られません。\n' +
     SHARE_URL;
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.6.1': [
+      '「友だちにこのアプリを教える」の紹介文に、音色のことを書き加えました'
+    ],
     '1.6.0': [
       '囲んだ蛍が輪の外で灯るとき、赤だけでなく、いろいろな色で灯るようにしました'
     ],
