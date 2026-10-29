@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-NCGgCqrnwjwQr7PdxvHqX2XBjvFYG92IUrB5jnCCA1s='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hG650yf5ew9d9F9tSs6BCAd9S9QlTw+8O0Aalx6jQSs='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -403,15 +403,43 @@
 
   .sw:focus-visible, .opt:focus-visible, .modes button:focus-visible, .nav button:focus-visible, .zset:focus-visible, .zchip:focus-visible, .textbtn:focus-visible, #zStart:focus-visible, .gear:focus-visible, .sgrid select:focus-visible, .newver-bar button:focus-visible, .update-btn:focus-visible, a.feedback-btn:focus-visible, .sheet-x:focus-visible, .share-text:focus-visible, .update-close:focus-visible, .notices a:focus-visible, .appinfo a:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 1px; }
 
-  /* なぞっている間は、タブとツールバーをすっと隠して、画面をすべて使う。指を離すと、少し間をおいて戻る */
-  .topbar, .nav, .zset, .notices, .bar { transition: opacity .5s ease .7s; }
-  body.drawing .topbar, body.drawing .nav, body.drawing .zset, body.drawing .notices, body.drawing .bar {
+  /* なぞっている間は、上のタブをすっと隠して、画面をすべて使う。指を離すと、少し間をおいて戻る */
+  .topbar, .zset, .notices { transition: opacity .5s ease .7s; }
+  body.drawing .topbar, body.drawing .zset, body.drawing .notices {
     opacity: 0; pointer-events: none;
     transition: opacity .25s ease 0s;
   }
+  /* 下のツールバー(とお手本の名前)は、なぞりはじめると隠れたまま。
+     タブを切り替えるか、いちばん下をダブルタップすると戻る */
+  .nav, .bar { transition: opacity .4s ease; }
+  body.bars-off .nav, body.bars-off .bar {
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease;
+  }
+  /* ツールバーが隠れている間の目印:いちばん下の薄い線 */
+  .bar-handle {
+    position: fixed; left: 50%; bottom: 0;
+    transform: translateX(-50%);
+    margin-bottom: calc(var(--bottom-gap) + 14px);
+    width: 44px; height: 4px; border-radius: 2px;
+    background: rgba(233, 237, 249, .28);
+    pointer-events: none;
+    opacity: 0; transition: opacity .5s ease;
+  }
+  body.bars-off:not(.drawing) .bar-handle { opacity: 1; transition-delay: .7s; }
+  .bar-tip {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    margin: 0 0 calc(var(--bottom-gap) + 30px);
+    padding: 0 16px;
+    text-align: center; font-size: 12px; letter-spacing: .06em;
+    color: var(--moji-usui);
+    pointer-events: none;
+    opacity: 0; transition: opacity .6s ease;
+  }
+  .bar-tip.show { opacity: 1; }
 
   @media (prefers-reduced-motion: reduce) {
-    .topbar, .nav, .zset, .notices, .bar, body.drawing .topbar, body.drawing .nav, body.drawing .zset, body.drawing .notices, body.drawing .bar { transition: none; }
+    .topbar, .nav, .zset, .notices, .bar, .bar-handle, .bar-tip, body.drawing .topbar, body.drawing .zset, body.drawing .notices, body.bars-off .nav, body.bars-off .bar { transition: none; }
     .hint, .bar, .sw i, .modes, .nav, #gd, .zset, .zchip { transition: none; }
   }
   .done:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 3px;
@@ -452,6 +480,8 @@
   <button type="button" id="nextBtn" aria-label="次のお手本">›</button>
 </div>
 
+<div class="bar-handle" aria-hidden="true"></div>
+<p class="bar-tip" id="barTip" aria-live="polite">いちばん下をダブルタップすると、ツールバーが戻ります</p>
 <div class="bar" id="bar" role="toolbar" aria-label="設定">
   <div class="swatches" id="swatches" role="radiogroup" aria-label="色"></div>
   <button class="opt" id="symBtn" type="button"><span class="k">対称</span><span class="v"></span></button>
@@ -566,7 +596,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.9.0';
+  const APP_VERSION = '1.10.0';
   const APP_RELEASE_DATE = '2026-10-29';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
@@ -582,6 +612,9 @@
     SHARE_URL;
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.10.0': [
+      '下のツールバーは、なぞったあとも隠れたままにしました。上のタブを切り替えるか、いちばん下をダブルタップすると戻ります'
+    ],
     '1.9.0': [
       'なぞっている間は、上のタブと下のツールバーを隠して、画面をすべて使えるようにしました(指を離すと戻ります)',
       'ホーム画面から開いたとき、下のツールバーの下にできていた余白をなくしました'
@@ -1940,11 +1973,47 @@
   let downCount = 0;
   function setDrawing() { document.body.classList.toggle('drawing', downCount > 0); }
 
+  // ---- 下のツールバー:なぞると隠れ、タブの切り替えか、いちばん下のダブルタップで戻る ----
+  const BAR_TIP_KEY = 'nazori:bar-tip';
+  const barTip = document.getElementById('barTip');
+  let barTipCount = 0, barTipTimer = 0, lastBottomTap = null;
+  try { const v = parseInt(localStorage.getItem(BAR_TIP_KEY) || '0', 10); barTipCount = Number.isInteger(v) && v >= 0 ? Math.min(v, 99) : 0; } catch (e) {}
+  function hideBars() {
+    if (document.body.classList.contains('bars-off')) return;
+    document.body.classList.add('bars-off');
+    if (barTipCount < 3) {   // 最初の3回だけ、戻し方をそっと案内する
+      barTipCount++;
+      try { localStorage.setItem(BAR_TIP_KEY, String(barTipCount)); } catch (e) {}
+      clearTimeout(barTipTimer);
+      barTipTimer = setTimeout(() => {
+        if (!document.body.classList.contains('bars-off')) return;
+        barTip.classList.add('show');
+        barTipTimer = setTimeout(() => barTip.classList.remove('show'), 3500);
+      }, 1200);
+    }
+  }
+  function showBars() {
+    document.body.classList.remove('bars-off');
+    clearTimeout(barTipTimer); barTip.classList.remove('show');
+    lastBottomTap = null;
+  }
+  // いちばん下(ツールバーのあたり)を、すばやく2回タップしたか
+  function isBottomDoubleTap(e) {
+    if (!document.body.classList.contains('bars-off')) return false;
+    if (e.clientY < H - 120) { lastBottomTap = null; return false; }
+    const t = performance.now(), prev = lastBottomTap;
+    lastBottomTap = { t, x: e.clientX, y: e.clientY };
+    if (prev && t - prev.t < 400 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 60) { lastBottomTap = null; return true; }
+    return false;
+  }
+
   cv.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     unlockAudio();
+    if (isBottomDoubleTap(e)) { showBars(); return; }   // 2回目のタップでは描かない
     if (G && (G.done || !G.ready)) return;   // 完成してから次のお手本が現れきるまでは、描けない
+    hideBars();
     cancelDemo();
     hint.classList.add('gone');
     try { cv.setPointerCapture(e.pointerId); } catch (err) {}
@@ -2050,6 +2119,7 @@
   });
 
   function setMode(m) {
+    showBars();   // タブを切り替えたら、ツールバーを戻す
     S.mode = m;
     S.life = S.mLife[m]; S.snd = S.mSnd[m]; applySnd();   // そのモードの初期値の余韻と音で始める
     unlockAudio();
