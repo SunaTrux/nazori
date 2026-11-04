@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ofXH/1b0cVJhvStSdfrepQUR6A9ErszuTPsDDb9V3kU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bERRsxEXTNp+53wec+7MkwUtUN3kKm/NO9hbF/O/ETQ='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>なぞり</title>
@@ -247,6 +247,21 @@
   .share-reset { display: block; margin: 6px auto 0; font-size: 12px; font-weight: 500; color: var(--moji-usui); }
   .share-reset[hidden] { display: none; }
   .update-box[hidden] { display: none; }
+  .qrcard {
+    width: 184px; margin: 4px auto 0; padding: 12px;
+    background: #fff; border-radius: 14px;
+  }
+  .qrcard svg { display: block; width: 160px; height: 160px; }
+  .qrurl { text-align: center; -webkit-user-select: text; user-select: text; }
+  /* PC:マウスを乗せたところがわかるように(アプリ定型13) */
+  @media (hover: hover) and (pointer: fine) {
+    .modes button:hover:not([aria-checked="true"]), .gear:hover, .zset:not(.sympick):hover, .sympick button:hover,
+    .nav button:hover, .update-btn:hover:not(:disabled), .textbtn:hover, .sheet-x:hover, .update-close:hover {
+      background-color: rgba(233, 237, 249, .12);
+    }
+    .done:hover { background: #fff; }
+    .sw:hover i { transform: scale(1.12); }
+  }
   .hguide[hidden] { display: none; }
   .hsteps { list-style: none; margin: 4px 0 16px; padding: 0; counter-reset: st; }
   .hsteps li {
@@ -592,6 +607,13 @@
       <p class="update-msg" id="a2hsMsg" aria-live="polite"></p>
     </div>
 
+    <div class="update-box" id="phoneBox" hidden>
+      <h3>スマホで開く</h3>
+      <p class="snote">スマホのカメラで読み取ると、スマホでなぞりが開きます。</p>
+      <div class="qrcard"><svg id="qrSvg" role="img" aria-label="なぞりのアドレスを表したコード"></svg></div>
+      <p class="snote small qrurl" id="qrUrl"></p>
+    </div>
+
     <div class="update-box">
       <h3>友だちにこのアプリを教える</h3>
       <p class="snote">アプリの紹介とURLを送れます。送る前に文章を書きかえることもできます。</p>
@@ -752,7 +774,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.14.0';
+  const APP_VERSION = '1.15.0';
   const APP_RELEASE_DATE = '2026-11-04';
   const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
@@ -769,6 +791,10 @@
     SHARE_URL;
   // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
   const RELEASE_NOTES = {
+    '1.15.0': [
+      'PCで開いたとき、設定に「スマホで開く」を追加しました。スマホのカメラで読み取ると、スマホでなぞりが開きます',
+      'PCでは、隠れたツールバーを Esc キーでも戻せるようにしました'
+    ],
     '1.14.0': [
       'スマホを横向きにしたとき、タブやツールバーを四隅に寄せて、まん中で大きくなぞれるようにしました'
     ],
@@ -2391,7 +2417,12 @@
   document.getElementById('zAll').addEventListener('click', () => { S.zShow.fill(true); syncZ(); });
   document.getElementById('zDone').addEventListener('click', closeZ);
   zsheet.addEventListener('click', (e) => { if (e.target === zsheet) closeZ(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeZ(); closeSet(); } });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const anyOpen = !document.getElementById('zsheet').hidden || !document.getElementById('ssheet').hidden || !document.getElementById('hsheet').hidden;
+    closeZ(); closeSet();
+    if (!anyOpen) showBars();   // 画面を閉じるものがなければ、隠れたツールバーを戻す
+  });
 
   /* ---------- 設定(モードごとの余韻と音の初期値) ---------- */
   const setBtn = document.getElementById('setBtn');
@@ -2744,6 +2775,169 @@
     bar.append(go, x);
     into.append(bar);
   }
+
+  // ---- PCからスマホへ移す(アプリ定型12)。PCのときだけ設定に出す ----
+  // 読み取ると開くコードを、外部のスクリプトを使わずにここで作る(英数字のアドレス用、誤り訂正レベルM、型番1〜10)
+  function makeQR(text) {
+    const ECC = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];   // 型番ごとの、1ブロックの誤り訂正の数(レベルM)
+    const BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];        // 型番ごとの、ブロックの数(レベルM)
+    const bytes = Array.from(new TextEncoder().encode(text));
+    const rawModules = (v) => {
+      let r = (16 * v + 128) * v + 64;
+      if (v >= 2) { const n = Math.floor(v / 7) + 2; r -= (25 * n - 10) * n - 55; if (v >= 7) r -= 36; }
+      return r;
+    };
+    const dataCw = (v) => Math.floor(rawModules(v) / 8) - ECC[v] * BLOCKS[v];
+    let ver = 1;
+    while (ver <= 10 && 4 + (ver < 10 ? 8 : 16) + bytes.length * 8 > dataCw(ver) * 8) ver++;
+    if (ver > 10) return null;
+    // データの並び:モード(バイト)、文字数、中身、終わり、埋め草
+    const bits = [];
+    const put = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+    put(4, 4); put(bytes.length, ver < 10 ? 8 : 16); bytes.forEach((b) => put(b, 8));
+    const cap = dataCw(ver) * 8;
+    put(0, Math.min(4, cap - bits.length));
+    put(0, (8 - bits.length % 8) % 8);
+    for (let pad = 0xEC; bits.length < cap; pad ^= 0xEC ^ 0x11) put(pad, 8);
+    const data = [];
+    for (let i = 0; i < bits.length; i += 8) data.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+    // 誤り訂正(リード・ソロモン)
+    const mul = (x, y) => { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z & 0xFF; };
+    const divisor = (deg) => {
+      const r = new Array(deg).fill(0); r[deg - 1] = 1; let root = 1;
+      for (let i = 0; i < deg; i++) {
+        for (let j = 0; j < deg; j++) { r[j] = mul(r[j], root); if (j + 1 < deg) r[j] ^= r[j + 1]; }
+        root = mul(root, 2);
+      }
+      return r;
+    };
+    const remainder = (dat, div) => {
+      const r = new Array(div.length).fill(0);
+      for (const b of dat) { const f = b ^ r.shift(); r.push(0); div.forEach((c, i) => { r[i] ^= mul(c, f); }); }
+      return r;
+    };
+    const nb = BLOCKS[ver], el = ECC[ver], raw = Math.floor(rawModules(ver) / 8);
+    const nShort = nb - raw % nb, shortLen = Math.floor(raw / nb), div = divisor(el);
+    const blocks = [];
+    for (let i = 0, k = 0; i < nb; i++) {
+      const dat = data.slice(k, k + shortLen - el + (i < nShort ? 0 : 1)); k += dat.length;
+      const ecc = remainder(dat, div);
+      if (i < nShort) dat.push(0);
+      blocks.push(dat.concat(ecc));
+    }
+    const cw = [];
+    for (let i = 0; i < blocks[0].length; i++) for (let j = 0; j < nb; j++) if (i !== shortLen - el || j >= nShort) cw.push(blocks[j][i]);
+    // 模様の配置
+    const size = ver * 4 + 17;
+    const mod = [], fn = [];
+    for (let y = 0; y < size; y++) { mod.push(new Array(size).fill(false)); fn.push(new Array(size).fill(false)); }
+    const setF = (x, y, d) => { mod[y][x] = d; fn[y][x] = true; };
+    for (let i = 0; i < size; i++) { setF(6, i, i % 2 === 0); setF(i, 6, i % 2 === 0); }
+    const finder = (x, y) => {
+      for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+        const d = Math.max(Math.abs(dx), Math.abs(dy)), xx = x + dx, yy = y + dy;
+        if (xx >= 0 && xx < size && yy >= 0 && yy < size) setF(xx, yy, d !== 2 && d !== 4);
+      }
+    };
+    finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+    const align = [];
+    if (ver > 1) {
+      const n = Math.floor(ver / 7) + 2, step = Math.ceil((ver * 4 + 4) / (n * 2 - 2)) * 2;
+      align.push(6);
+      for (let pos = size - 7; align.length < n; pos -= step) align.splice(1, 0, pos);
+    }
+    align.forEach((ay, i) => align.forEach((ax, j) => {
+      if ((i === 0 && j === 0) || (i === 0 && j === align.length - 1) || (i === align.length - 1 && j === 0)) return;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) setF(ax + dx, ay + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }));
+    const drawFormat = (mask) => {
+      const d = (0 << 3) | mask;   // レベルMの印は 00
+      let r = d; for (let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+      const b = ((d << 10) | r) ^ 0x5412, bit = (i) => ((b >>> i) & 1) !== 0;
+      for (let i = 0; i <= 5; i++) setF(8, i, bit(i));
+      setF(8, 7, bit(6)); setF(8, 8, bit(7)); setF(7, 8, bit(8));
+      for (let i = 9; i < 15; i++) setF(14 - i, 8, bit(i));
+      for (let i = 0; i < 8; i++) setF(size - 1 - i, 8, bit(i));
+      for (let i = 8; i < 15; i++) setF(8, size - 15 + i, bit(i));
+      setF(8, size - 8, true);
+    };
+    drawFormat(0);
+    if (ver >= 7) {
+      let r = ver; for (let i = 0; i < 12; i++) r = (r << 1) ^ ((r >>> 11) * 0x1F25);
+      const b = (ver << 12) | r;
+      for (let i = 0; i < 18; i++) { const d = ((b >>> i) & 1) !== 0, a = size - 11 + i % 3, c = Math.floor(i / 3); setF(a, c, d); setF(c, a, d); }
+    }
+    let n = 0;
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (let v = 0; v < size; v++) for (let j = 0; j < 2; j++) {
+        const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - v : v;
+        if (!fn[y][x] && n < cw.length * 8) { mod[y][x] = ((cw[n >>> 3] >>> (7 - (n & 7))) & 1) !== 0; n++; }
+      }
+    }
+    const MASKS = [
+      (x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+      (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0, (x, y) => (x * y) % 2 + (x * y) % 3 === 0,
+      (x, y) => ((x * y) % 2 + (x * y) % 3) % 2 === 0, (x, y) => ((x + y) % 2 + (x * y) % 3) % 2 === 0,
+    ];
+    const applyMask = (m) => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!fn[y][x] && MASKS[m](x, y)) mod[y][x] = !mod[y][x]; };
+    // 読み取りやすい模様を選ぶ(同じ色が続く・固まる・偏るほど点数が悪い)
+    const penalty = () => {
+      let p = 0, dark = 0;
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { if (mod[y][x]) dark++; }
+      for (let pass = 0; pass < 2; pass++) for (let a = 0; a < size; a++) {
+        let run = 1;
+        for (let b = 1; b < size; b++) {
+          const c = pass ? mod[b][a] : mod[a][b], prev = pass ? mod[b - 1][a] : mod[a][b - 1];
+          if (c === prev) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1;
+        }
+      }
+      for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) {
+        const c = mod[y][x]; if (c === mod[y][x + 1] && c === mod[y + 1][x] && c === mod[y + 1][x + 1]) p += 3;
+      }
+      // 四隅の目印に似た並び(1:1:3:1:1)があると、読み取りがまぎらわしくなる
+      for (let pass = 0; pass < 2; pass++) for (let a = 0; a < size; a++) {
+        let line = '0000';
+        for (let b = 0; b < size; b++) line += (pass ? mod[b][a] : mod[a][b]) ? '1' : '0';
+        line += '0000';
+        for (let i = line.indexOf('1011101'); i >= 0; i = line.indexOf('1011101', i + 1)) {
+          if (line.slice(i - 4, i) === '0000' || line.slice(i + 7, i + 11) === '0000') p += 40;
+        }
+      }
+      p += Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+      return p;
+    };
+    let best = 0, bestP = Infinity;
+    for (let m = 0; m < 8; m++) { applyMask(m); drawFormat(m); const pp = penalty(); if (pp < bestP) { bestP = pp; best = m; } applyMask(m); }
+    applyMask(best); drawFormat(best);
+    return mod;
+  }
+  function drawQR(svg, text) {
+    const mod = makeQR(text);
+    if (!mod) return false;
+    const size = mod.length, q = 4, total = size + q * 2;
+    let d = '';
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (mod[y][x]) d += 'M' + (x + q) + ' ' + (y + q) + 'h1v1h-1z';
+    svg.setAttribute('viewBox', '0 0 ' + total + ' ' + total);
+    svg.setAttribute('shape-rendering', 'crispEdges');
+    svg.textContent = '';
+    const NS = 'http://www.w3.org/2000/svg';
+    const bg = document.createElementNS(NS, 'rect');
+    bg.setAttribute('width', total); bg.setAttribute('height', total); bg.setAttribute('fill', '#fff');
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', d); path.setAttribute('fill', '#000');
+    svg.append(bg, path);
+    return true;
+  }
+  const APP_URL = 'https://sunatrux.github.io/nazori/';
+  // スマホ・タブレットではなく、マウスがあるか、タッチ操作のない端末をPCとみなす
+  const IS_PC = !IS_MOBILE && (!!(window.matchMedia && window.matchMedia('(pointer: fine)').matches) || !navigator.maxTouchPoints);
+  if (IS_PC && drawQR(document.getElementById('qrSvg'), APP_URL)) {
+    document.getElementById('phoneBox').hidden = false;
+    document.getElementById('qrUrl').textContent = APP_URL;
+  }
+  // PCでは「ダブルタップ」ではなく「ダブルクリック」と案内する
+  if (IS_PC) barTip.textContent = 'いちばん下をダブルクリックすると、ツールバーが戻ります';
 
   // ---- 友だちにこのアプリを教える ----
   const shareTa = document.getElementById('shareText');
