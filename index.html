@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-AfSUWd/hN4R+Xy2pBFeyv4iGBoZwMm50nr07e8F45JI='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Sk2Z2X1tDorpxevNyXfyA+M5WzWF2Uz7vcbbrmCSHcw='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- 夜空のアプリなので、配色はダークだけ。Brave のナイトモードなどの強制ダークで色が崩れないよう、自分の配色であることを伝える(アプリ定型03) -->
@@ -250,6 +250,30 @@
   .share-reset { display: block; margin: 6px auto 0; font-size: 12px; font-weight: 500; color: var(--moji-usui); }
   .share-reset[hidden] { display: none; }
   .update-box[hidden] { display: none; }
+  .curver { margin: 0 0 8px; font-size: 14px; letter-spacing: .04em; }
+  .curver b { font-size: 15px; }
+  .curver span { font-size: 12px; color: var(--moji-usui); }
+  .hist-btn { margin-top: 8px; }
+  .hist { list-style: none; margin: 0 0 12px; padding: 0; }
+  .hist > li { padding: 12px 0; border-top: 1px solid var(--sen); }
+  .hist > li:first-child { border-top: 0; padding-top: 0; }
+  .hist ul li { padding: 0; border: 0; }
+  .hist .hv { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+  .hist .hv b { font-size: 16px; letter-spacing: .04em; }
+  .hist .hv time { font-size: 12px; color: var(--moji-usui); }
+  .hist .now {
+    font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    padding: 1px 8px; border-radius: 999px;
+    background: var(--moji); color: var(--ai-fukai);
+  }
+  .hist ul { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.75; }
+  #histMore { margin-bottom: 4px; }
+  #histMore[hidden] { display: none; }
+  .update-notice .linkbtn {
+    padding: 0; min-height: 32px; border: 0; background: none;
+    color: var(--moji-usui); font: inherit; font-size: 12px;
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+  }
   .qrcard {
     width: 184px; margin: 4px auto 0; padding: 12px;
     background: #fff; border-radius: 14px;
@@ -638,9 +662,11 @@
 
     <div class="update-box">
       <h3>アプリの更新</h3>
+      <p class="curver">今のバージョン <b id="curVer"></b> <span id="curDate"></span></p>
       <p class="snote">ホーム画面のアプリは、閉じても裏で止まっているだけで、自動では新しくなりません。開いたときに最新版を確認しますが、すぐ知りたいときはここで確認できます。</p>
       <button class="update-btn" id="updCheckBtn" type="button">更新を確認</button>
       <p class="update-msg" id="updMsg" aria-live="polite"></p>
+      <button class="update-btn hist-btn" id="histBtn" type="button">更新履歴</button>
     </div>
 
     <div class="update-box">
@@ -659,9 +685,18 @@
     <button class="done" id="sDone" type="button">閉じる</button>
     <p class="appinfo">
       <span id="verText"></span><br>
-      <a id="changelogLink" target="_blank" rel="noopener noreferrer">更新履歴</a><br>
       <span class="powered">Powered by SunaTrux</span>
     </p>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="vsheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="vTitle">
+    <button class="sheet-x" id="vClose" type="button" aria-label="閉じる">×</button>
+    <h2 id="vTitle">更新履歴</h2>
+    <ol class="hist" id="histList"></ol>
+    <button class="update-btn" id="histMore" type="button" hidden>もっと見る(次の10件)</button>
+    <button class="done" id="vDone" type="button">閉じる</button>
   </div>
 </div>
 
@@ -776,10 +811,9 @@
   const STORE_KEY = 'nazori:v1';
 
   /* ---------- バージョン ---------- */
-  // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、CHANGELOG.md と日付を合わせる
-  const APP_VERSION = '1.15.1';
-  const APP_RELEASE_DATE = '2026-11-04';
-  const CHANGELOG_URL = 'https://github.com/sunatrux/nazori/blob/main/CHANGELOG.md';
+  // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、下の HISTORY と CHANGELOG.md にも同じ版を足す
+  const APP_VERSION = '1.16.0';
+  const APP_RELEASE_DATE = '2026-11-07';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
   const FEEDBACK_URL = 'https://tally.so/r/9qL0A4';
   const FEEDBACK_APP_NAME = 'なぞり';
@@ -792,105 +826,115 @@
     '\n' +
     '※インストール不要、ログイン不要の安全設計。ブラウザで開いたらホーム画面に追加していつでもなぞれる。\n' +
     SHARE_URL;
-  // アップデート時に一度だけ出すお知らせ。版を上げるたびに必ず1行以上追加する(書き忘れても「細かな修正」と表示)
-  const RELEASE_NOTES = {
-    '1.15.1': [
-      'Brave のナイトモードなどで、色が変わってしまわないようにしました'
-    ],
-    '1.15.0': [
+  // 更新履歴(アプリ定型20)。新しい版を上に足す。日付は CHANGELOG.md とそろえる。
+  // 文章は使う人向けのやさしい言葉で。アップデートのお知らせ(定型05)にも、この中身を使う
+  const HISTORY = [
+    { v: '1.16.0', date: '2026-11-07', notes: [
+      '設定の「アプリの更新」に「更新履歴」を追加しました。これまでの変更を、新しい順に見られます',
+      'アップデートのお知らせの「更新履歴を見る」からも、同じ画面が開きます',
+    ] },
+    { v: '1.15.1', date: '2026-11-04', notes: [
+      'Brave のナイトモードなどで、色が変わってしまわないようにしました',
+    ] },
+    { v: '1.15.0', date: '2026-11-04', notes: [
       'PCで開いたとき、設定に「スマホで開く」を追加しました。スマホのカメラで読み取ると、スマホでなぞりが開きます',
-      'PCでは、隠れたツールバーを Esc キーでも戻せるようにしました'
-    ],
-    '1.14.0': [
-      'スマホを横向きにしたとき、タブやツールバーを四隅に寄せて、まん中で大きくなぞれるようにしました'
-    ],
-    '1.13.0': [
+      'PCでは、隠れたツールバーを Esc キーでも戻せるようにしました',
+    ] },
+    { v: '1.14.0', date: '2026-11-04', notes: [
+      'スマホを横向きにしたとき、タブやツールバーを四隅に寄せて、まん中で大きくなぞれるようにしました',
+    ] },
+    { v: '1.13.0', date: '2026-11-04', notes: [
       '「ホーム画面に追加」の手順を、図つきで見られるようにしました(iPhone・Android・LINE の中で開いたときで、それぞれの手順)',
-      'ブラウザで開いているときは、タブの下に「ホーム画面に追加すると、アプリのように使えます」と小さく案内します(× で閉じると30日出ません)'
-    ],
-    '1.12.4': [
+      'ブラウザで開いているときは、タブの下に「ホーム画面に追加すると、アプリのように使えます」と小さく案内します(× で閉じると30日出ません)',
+    ] },
+    { v: '1.12.4', date: '2026-10-30', notes: [
       '漢字と魔法陣でも、なぞっている間、下のお手本の名前を隠さないようにしました',
-      '長押ししたときの光を、まぶしすぎないように抑えました'
-    ],
-    '1.12.3': [
-      '星座モードでは、なぞっている間も、下の星座の名前(牡羊座など)を隠さないようにしました'
-    ],
-    '1.12.2': [
+      '長押ししたときの光を、まぶしすぎないように抑えました',
+    ] },
+    { v: '1.12.3', date: '2026-10-30', notes: [
+      '星座モードでは、なぞっている間も、下の星座の名前(牡羊座など)を隠さないようにしました',
+    ] },
+    { v: '1.12.2', date: '2026-10-30', notes: [
       'LINE の中で開いたとき、上下になぞると画面ごと動いてしまうのを抑えました',
-      '「友だちにこのアプリを教える」で送ったURLを LINE で開くと、Safari や Chrome で開くようにしました'
-    ],
-    '1.12.1': [
-      '「友だちにこのアプリを教える」の紹介文を新しくしました'
-    ],
-    '1.12.0': [
-      '自由モードのタブの下は「フリーハンド」「左右対称」「螺旋」「万華鏡」と表示し、左右の ‹ › で切り替えられるようにしました'
-    ],
-    '1.11.1': [
-      'タブの下の「対称」「表示する星座をえらぶ」の文字を大きくして、読みやすくしました'
-    ],
-    '1.11.0': [
+      '「友だちにこのアプリを教える」で送ったURLを LINE で開くと、Safari や Chrome で開くようにしました',
+    ] },
+    { v: '1.12.1', date: '2026-10-30', notes: [
+      '「友だちにこのアプリを教える」の紹介文を新しくしました',
+    ] },
+    { v: '1.12.0', date: '2026-10-30', notes: [
+      '自由モードのタブの下は「フリーハンド」「左右対称」「螺旋」「万華鏡」と表示し、左右の ‹ › で切り替えられるようにしました',
+    ] },
+    { v: '1.11.1', date: '2026-10-30', notes: [
+      'タブの下の「対称」「表示する星座をえらぶ」の文字を大きくして、読みやすくしました',
+    ] },
+    { v: '1.11.0', date: '2026-10-30', notes: [
       '「対称」は自由モードでしか使わないので、下のツールバーから、自由モードのタブのすぐ下に移しました',
-      'バージョンアップのお知らせが、タブの下のボタンと重なっていたのを直しました'
-    ],
-    '1.10.0': [
-      '下のツールバーは、なぞったあとも隠れたままにしました。上のタブを切り替えるか、いちばん下をダブルタップすると戻ります'
-    ],
-    '1.9.0': [
+      'バージョンアップのお知らせが、タブの下のボタンと重なっていたのを直しました',
+    ] },
+    { v: '1.10.0', date: '2026-10-30', notes: [
+      '下のツールバーは、なぞったあとも隠れたままにしました。上のタブを切り替えるか、いちばん下をダブルタップすると戻ります',
+    ] },
+    { v: '1.9.0', date: '2026-10-30', notes: [
       'なぞっている間は、上のタブと下のツールバーを隠して、画面をすべて使えるようにしました(指を離すと戻ります)',
-      'ホーム画面から開いたとき、下のツールバーの下にできていた余白をなくしました'
-    ],
-    '1.8.0': [
-      'スマホでは、設定から「ホーム画面に追加」できるようにしました'
-    ],
-    '1.7.1': [
-      '「友だちにこのアプリを教える」の紹介文を少し整えました'
-    ],
-    '1.7.0': [
-      'ホーム画面用のアイコンを作りました。ホーム画面に追加すると、アプリのように全画面で開けます'
-    ],
-    '1.6.2': [
-      '「友だちにこのアプリを教える」の紹介文を新しくしました'
-    ],
-    '1.6.1': [
-      '「友だちにこのアプリを教える」の紹介文に、音色のことを書き加えました'
-    ],
-    '1.6.0': [
-      '囲んだ蛍が輪の外で灯るとき、赤だけでなく、いろいろな色で灯るようにしました'
-    ],
-    '1.5.1': [
-      '蛍モードに「ホタルと何もしない」という見出しを付けました'
-    ],
-    '1.5.0': [
+      'ホーム画面から開いたとき、下のツールバーの下にできていた余白をなくしました',
+    ] },
+    { v: '1.8.0', date: '2026-10-30', notes: [
+      'スマホでは、設定から「ホーム画面に追加」できるようにしました',
+    ] },
+    { v: '1.7.1', date: '2026-10-30', notes: [
+      '「友だちにこのアプリを教える」の紹介文を少し整えました',
+    ] },
+    { v: '1.7.0', date: '2026-10-29', notes: [
+      'ホーム画面用のアイコンを作りました。ホーム画面に追加すると、アプリのように全画面で開けます',
+    ] },
+    { v: '1.6.2', date: '2026-10-29', notes: [
+      '「友だちにこのアプリを教える」の紹介文を新しくしました',
+    ] },
+    { v: '1.6.1', date: '2026-10-29', notes: [
+      '「友だちにこのアプリを教える」の紹介文に、音色のことを書き加えました',
+    ] },
+    { v: '1.6.0', date: '2026-10-29', notes: [
+      '囲んだ蛍が輪の外で灯るとき、赤だけでなく、いろいろな色で灯るようにしました',
+    ] },
+    { v: '1.5.1', date: '2026-10-29', notes: [
+      '蛍モードに「ホタルと何もしない」という見出しを付けました',
+    ] },
+    { v: '1.5.0', date: '2026-10-29', notes: [
       '蛍は、指が近づくとするりと逃げるようになりました',
-      '輪で囲むと一瞬消えて、輪の外でやさしく赤く灯ってから消えていきます'
-    ],
-    '1.4.0': [
+      '輪で囲むと一瞬消えて、輪の外でやさしく赤く灯ってから消えていきます',
+    ] },
+    { v: '1.4.0', date: '2026-10-29', notes: [
       '設定に「友だちにこのアプリを教える」を追加しました。紹介文とURLを送れます',
-      '設定は、右上の × か、いちばん下の「閉じる」で閉じられます'
-    ],
-    '1.3.0': [
+      '設定は、右上の × か、いちばん下の「閉じる」で閉じられます',
+    ] },
+    { v: '1.3.0', date: '2026-10-29', notes: [
       '魔法陣では、はじめからパッドの音が鳴るようにしました',
       '設定に「初期状態に戻す」を追加しました',
-      '設定の上に、アプリの名前を小さく入れました'
-    ],
-    '1.2.0': [
-      '設定に「感想を送る」を追加しました。よかったら使ってみての感想を聞かせてください'
-    ],
-    '1.1.1': [
-      '蛍を囲んで消えるときの光を、まぶしすぎないよう控えめに'
-    ],
-    '1.1.0': [
+      '設定の上に、アプリの名前を小さく入れました',
+    ] },
+    { v: '1.2.0', date: '2026-10-27', notes: [
+      '設定に「感想を送る」を追加しました。よかったら使ってみての感想を聞かせてください',
+    ] },
+    { v: '1.1.1', date: '2026-10-24', notes: [
+      '蛍を囲んで消えるときの光を、まぶしすぎないよう控えめに',
+    ] },
+    { v: '1.1.0', date: '2026-10-24', notes: [
       '設定の一番下に「アプリの更新」を追加。最新版があるか確かめて、その場で更新できます',
       '新しいバージョンが出たら、画面の上でお知らせするように',
-      '一度開いておけば、電波の弱い場所でも起動するように'
-    ],
-    '1.0.2': [
-      '蛍を囲むと、大きく膨らんでから、はかなく消えるように'
-    ],
-    '1.0.1': [
-      '安全性を高めました(外部への通信を止め、保存データの読み込みを厳しく)'
-    ]
-  };
+      '一度開いておけば、電波の弱い場所でも起動するように',
+    ] },
+    { v: '1.0.2', date: '2026-10-24', notes: [
+      '蛍を囲むと、大きく膨らんでから、はかなく消えるように',
+    ] },
+    { v: '1.0.1', date: '2026-10-22', notes: [
+      '安全性を高めました(外部への通信を止め、保存データの読み込みを厳しく)',
+    ] },
+    { v: '1.0.0', date: '2026-10-12', notes: [
+      'なぞりを公開しました。画面を指でなぞると、光の線が描けます',
+      '自由・漢字・魔法陣・星座・蛍の5つのモード、4つの色、ガムラン・琴・パッドの音',
+    ] },
+  ];
+  const RELEASE_NOTES = Object.fromEntries(HISTORY.map((h) => [h.v, h.notes]));
   const SEEN_VERSION_KEY = 'nazori:seen-version';
 
   /* ---------- お手本(100×100 の枠に描いた線) ---------- */
@@ -2425,7 +2469,8 @@
   zsheet.addEventListener('click', (e) => { if (e.target === zsheet) closeZ(); });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    const anyOpen = !document.getElementById('zsheet').hidden || !document.getElementById('ssheet').hidden || !document.getElementById('hsheet').hidden;
+    const anyOpen = !document.getElementById('zsheet').hidden || !document.getElementById('ssheet').hidden || !document.getElementById('hsheet').hidden || !document.getElementById('vsheet').hidden;
+    if (!document.getElementById('vsheet').hidden) { closeHistory(); return; }
     closeZ(); closeSet();
     if (!anyOpen) showBars();   // 画面を閉じるものがなければ、隠れたツールバーを戻す
   });
@@ -2594,8 +2639,8 @@
         RELEASE_NOTES[v].forEach((n) => ul.append(el('li', '', n)));
         box.append(ul);
       });
-      const a = el('a', '', 'すべての更新履歴を見る');
-      a.href = CHANGELOG_URL; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      const a = el('button', 'linkbtn', '更新履歴を見る'); a.type = 'button';
+      a.addEventListener('click', openHistory);   // GitHub ではなく、アプリの中の更新履歴を開く
       box.append(a);
       noticesEl.append(box);
     } else if (!newVersion && typeof appendHomeTip === 'function') {
@@ -2603,6 +2648,42 @@
     }
     document.body.classList.toggle('has-notice', noticesEl.childElementCount > 0);
   }
+
+  // ---- 更新履歴の画面(アプリ定型20):新しい順に10件ずつ ----
+  const vsheet = document.getElementById('vsheet');
+  const histList = document.getElementById('histList');
+  const histMore = document.getElementById('histMore');
+  let histShown = 0;
+  function showMoreHistory() {
+    const next = HISTORY.slice(histShown, histShown + 10);
+    next.forEach((h) => {
+      const li = el('li');
+      const head = el('div', 'hv');
+      head.append(el('b', '', 'v' + h.v));
+      const t = el('time', '', h.date.replace(/-/g, '/')); t.dateTime = h.date;
+      head.append(t);
+      if (h.v === APP_VERSION) head.append(el('span', 'now', '今のバージョン'));
+      const ul = el('ul');
+      h.notes.forEach((n) => ul.append(el('li', '', n)));
+      li.append(head, ul);
+      histList.append(li);
+    });
+    histShown += next.length;
+    histMore.hidden = histShown >= HISTORY.length;
+  }
+  function openHistory() {
+    histList.textContent = ''; histShown = 0;
+    showMoreHistory();
+    vsheet.hidden = false;
+    vsheet.querySelector('.sheet').scrollTop = 0;
+    document.getElementById('vDone').focus({ preventScroll: true });
+  }
+  function closeHistory() { if (!vsheet.hidden) vsheet.hidden = true; }
+  histMore.addEventListener('click', showMoreHistory);
+  document.getElementById('histBtn').addEventListener('click', openHistory);
+  document.getElementById('vClose').addEventListener('click', closeHistory);
+  document.getElementById('vDone').addEventListener('click', closeHistory);
+  vsheet.addEventListener('click', (e) => { if (e.target === vsheet) closeHistory(); });
 
   // 設定の「アプリの更新」
   const updCheckBtn = document.getElementById('updCheckBtn');
@@ -2631,7 +2712,8 @@
     }).catch(() => { updState = 'error'; syncUpdateBox(); });
   });
   document.getElementById('verText').textContent = 'バージョン ' + APP_VERSION + '(' + APP_RELEASE_DATE + ')';
-  document.getElementById('changelogLink').href = CHANGELOG_URL;
+  document.getElementById('curVer').textContent = 'v' + APP_VERSION;
+  document.getElementById('curDate').textContent = '(' + APP_RELEASE_DATE + ')';
 
   // ---- 感想を送る ----
   function isStandaloneApp() { return !!(navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)); }

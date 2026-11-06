@@ -9,8 +9,8 @@
 ## 更新のしかた
 
 1. `index.html` の `APP_VERSION` と `APP_RELEASE_DATE` を上げる
-2. `RELEASE_NOTES` に、その版のお知らせを1行以上追加する
-3. `CHANGELOG.md` に同じ版を追加する
+2. `HISTORY` のいちばん上に、その版(`v`・`date`・使う人向けの `notes` を1行以上)を足す。アプリ内の更新履歴と、アップデートのお知らせに使われる
+3. `CHANGELOG.md` に同じ版・同じ日付を追加する(開発用のくわしい記録)
 
 `sw.js` は変更しなくて大丈夫です。
 
