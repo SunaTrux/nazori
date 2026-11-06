@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Sk2Z2X1tDorpxevNyXfyA+M5WzWF2Uz7vcbbrmCSHcw='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-fJNgf68O7AEmvN8xSuNmmGqWbFYyf6IJWg9R4uIKq4k='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- 夜空のアプリなので、配色はダークだけ。Brave のナイトモードなどの強制ダークで色が崩れないよう、自分の配色であることを伝える(アプリ定型03) -->
@@ -812,7 +812,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、下の HISTORY と CHANGELOG.md にも同じ版を足す
-  const APP_VERSION = '1.16.0';
+  const APP_VERSION = '1.16.1';
   const APP_RELEASE_DATE = '2026-11-07';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
   const FEEDBACK_URL = 'https://tally.so/r/9qL0A4';
@@ -829,6 +829,9 @@
   // 更新履歴(アプリ定型20)。新しい版を上に足す。日付は CHANGELOG.md とそろえる。
   // 文章は使う人向けのやさしい言葉で。アップデートのお知らせ(定型05)にも、この中身を使う
   const HISTORY = [
+    { v: '1.16.1', date: '2026-11-07', notes: [
+      'iPhone を消音モード(マナーモード)にしているときは、音が鳴らないようにしました',
+    ] },
     { v: '1.16.0', date: '2026-11-07', notes: [
       '設定の「アプリの更新」に「更新履歴」を追加しました。これまでの変更を、新しい順に見られます',
       'アップデートのお知らせの「更新履歴を見る」からも、同じ画面が開きます',
@@ -1941,8 +1944,8 @@
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     try {
-      // iPhone の消音スイッチが入っていても鳴るようにする(対応している端末のみ)
-      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+      // iPhone の消音モード(マナーモード)のときは鳴らさない。ほかのアプリの音楽も止めずに重ねて鳴らす(対応している端末のみ)
+      try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) {}
       ac = new AC();
       master = ac.createGain(); master.gain.value = 0.9;
       const comp = ac.createDynamicsCompressor();
