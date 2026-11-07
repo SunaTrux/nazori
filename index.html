@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-N2J0kjocPTs1Jg4KyYlvGRdwv8mEI4D4lcFebYxpw6M='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Rz+fnjcL570tLuRs5ii81nfWJ5tjis6hs4cpw1AKAkc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- 夜空のアプリなので、配色はダークだけ。Brave のナイトモードなどの強制ダークで色が崩れないよう、自分の配色であることを伝える(アプリ定型03) -->
@@ -523,6 +523,7 @@
     width: 14px; height: 14px; transform: rotate(45deg);
     background: var(--moji);
   }
+  .tour.below .tour-arrow { bottom: auto; top: -7px; }   /* 上のタブを指すときは、吹き出しを下に出して矢印を上に */
 
   /* ---------- スマホ横向き(アプリ定型14):高さが狭いので、操作を四隅に寄せて、まん中を広く使う ---------- */
   @media (orientation: landscape) and (max-height: 500px) {
@@ -819,7 +820,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、下の HISTORY と CHANGELOG.md にも同じ版を足す
-  const APP_VERSION = '1.17.0';
+  const APP_VERSION = '1.17.1';
   const APP_RELEASE_DATE = '2026-11-08';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
   const FEEDBACK_URL = 'https://tally.so/r/9qL0A4';
@@ -836,6 +837,9 @@
   // 更新履歴(アプリ定型20)。新しい版を上に足す。日付は CHANGELOG.md とそろえる。
   // 文章は使う人向けのやさしい言葉で。アップデートのお知らせ(定型05)にも、この中身を使う
   const HISTORY = [
+    { v: '1.17.1', date: '2026-11-08', notes: [
+      'はじめての案内を、モード → なぞる色 → 音色 の3つにしました。それぞれの場所を吹き出しで指します',
+    ] },
     { v: '1.17.0', date: '2026-11-08', notes: [
       'はじめて使う人に、色を変えたり音を選んだりできることを、吹き出しで案内するようにしました',
       '下のツールバーは、指を離すと上のタブと一緒に戻るようにしました',
@@ -3003,12 +3007,13 @@
   }
 
   // ---- はじめて開いたときの案内(色と音) ----
-  // はじめて開いた人が最初になぞって指を離したあと、ツールバーの色の丸と「音」を、順に吹き出しで指し示す。一度きり
+  // はじめて開いた人が最初になぞって指を離したあと、上のタブ(モード)→色の丸→「音」を、順に吹き出しで指し示す。一度きり
   const TOUR_KEY = 'nazori:tour-done';
   const tourEl = document.getElementById('tour');
   const TOUR = [
-    { target: () => document.getElementById('swatches'), text: '色の丸を押すと、光の色を変えられます' },
-    { target: () => document.getElementById('sndBtn'), text: '「音」を押すと、ガムラン・琴・パッドなど、鳴る楽器を選べます' },
+    { target: () => document.getElementById('modes'), text: 'モードを選べます。', below: true },
+    { target: () => document.getElementById('swatches'), text: 'なぞる色を変えられます。' },
+    { target: () => document.getElementById('sndBtn'), text: '音色を変えられます。' },
   ];
   let tourStep = -1, tourWanted = false;
   try { tourWanted = !hadSavedData && !localStorage.getItem(TOUR_KEY); } catch (e) {}
@@ -3018,7 +3023,9 @@
     const w = tourEl.offsetWidth, h = tourEl.offsetHeight;
     const cx = r.left + r.width / 2;
     const left = clamp(cx - w / 2, 12, window.innerWidth - w - 12);
-    tourEl.style.transform = 'translate(' + Math.round(left) + 'px,' + Math.round(r.top - h - 14) + 'px)';
+    const below = !!TOUR[tourStep].below;
+    tourEl.classList.toggle('below', below);
+    tourEl.style.transform = 'translate(' + Math.round(left) + 'px,' + Math.round(below ? r.bottom + 14 : r.top - h - 14) + 'px)';
     document.getElementById('tourArrow').style.left = Math.round(clamp(cx - left - 7, 14, w - 28)) + 'px';
   }
   function showTourStep(i) {
