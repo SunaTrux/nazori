@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-fJNgf68O7AEmvN8xSuNmmGqWbFYyf6IJWg9R4uIKq4k='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-N2J0kjocPTs1Jg4KyYlvGRdwv8mEI4D4lcFebYxpw6M='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- 夜空のアプリなので、配色はダークだけ。Brave のナイトモードなどの強制ダークで色が崩れないよう、自分の配色であることを伝える(アプリ定型03) -->
@@ -487,41 +487,42 @@
 
   .sw:focus-visible, .opt:focus-visible, .modes button:focus-visible, .nav button:focus-visible, .zset:focus-visible, .zchip:focus-visible, .textbtn:focus-visible, #zStart:focus-visible, .gear:focus-visible, .sgrid select:focus-visible, .hstip button:focus-visible, .newver-bar button:focus-visible, .update-btn:focus-visible, a.feedback-btn:focus-visible, .sheet-x:focus-visible, .share-text:focus-visible, .update-close:focus-visible, .notices a:focus-visible, .appinfo a:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 1px; }
 
-  /* なぞっている間は、上のタブをすっと隠して、画面をすべて使う。指を離すと、少し間をおいて戻る */
-  .topbar, .zset, .notices { transition: opacity .5s ease .7s; }
-  body.drawing .topbar, body.drawing .zset, body.drawing .notices {
+  /* なぞっている間は、上のタブと下のツールバーをすっと隠して、画面をすべて使う。指を離すと、少し間をおいて一緒に戻る。
+     お手本(漢字・魔法陣・星座)の名前と ‹ › は、なぞっている間も隠さない。蛍の見出しだけ隠す */
+  .topbar, .zset, .notices, .bar, .nav { transition: opacity .5s ease .7s; }
+  body.drawing .topbar, body.drawing .zset, body.drawing .notices, body.drawing .bar, body.drawing.m-hotaru .nav {
     opacity: 0; pointer-events: none;
     transition: opacity .25s ease 0s;
   }
-  /* 下のツールバー(とお手本の名前)は、なぞりはじめると隠れたまま。
-     タブを切り替えるか、いちばん下をダブルタップすると戻る */
-  .nav, .bar { transition: opacity .4s ease; }
-  /* お手本(漢字・魔法陣・星座)の名前と ‹ › は、なぞっている間も隠さない。蛍の見出しだけ隠す */
-  body.bars-off.m-hotaru .nav, body.bars-off .bar {
-    opacity: 0; pointer-events: none;
-    transition: opacity .25s ease;
+
+  /* ---------- はじめて開いたときの案内:ツールバーの色と音を、吹き出しで指し示す ---------- */
+  .tour {
+    position: fixed; left: 0; top: 0;
+    width: min(300px, calc(100% - 24px));
+    padding: 12px 14px 10px;
+    background: var(--moji); color: var(--ai-fukai);
+    border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .45);
+    transition: opacity .4s ease .7s;
   }
-  /* ツールバーが隠れている間の目印:いちばん下の薄い線 */
-  .bar-handle {
-    position: fixed; left: 50%; bottom: 0;
-    transform: translateX(-50%);
-    margin-bottom: calc(var(--bottom-gap) + 14px);
-    width: 44px; height: 4px; border-radius: 2px;
-    background: rgba(233, 237, 249, .28);
-    pointer-events: none;
-    opacity: 0; transition: opacity .5s ease;
+  .tour[hidden] { display: none; }
+  body.drawing .tour { opacity: 0; pointer-events: none; transition: opacity .2s ease 0s; }
+  .tour-text { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.7; letter-spacing: .03em; }
+  .tour-row { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+  .tour-step { flex: 1; font-size: 11px; color: rgba(7, 13, 31, .55); }
+  .tour button {
+    min-height: 40px; padding: 0 12px;
+    border: 0; border-radius: 12px; cursor: pointer;
+    font: inherit; font-size: 13px; font-weight: 700;
   }
-  body.bars-off:not(.drawing) .bar-handle { opacity: 1; transition-delay: .7s; }
-  .bar-tip {
-    position: fixed; left: 0; right: 0; bottom: 0;
-    margin: 0 0 calc(var(--bottom-gap) + 30px);
-    padding: 0 16px;
-    text-align: center; font-size: 12px; letter-spacing: .06em;
-    color: var(--moji-usui);
-    pointer-events: none;
-    opacity: 0; transition: opacity .6s ease;
+  .tour-skip { background: none; color: rgba(7, 13, 31, .6); }
+  .tour-next { background: var(--ai); color: var(--moji); }
+  .tour button:focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
+  .tour-arrow {
+    position: absolute; bottom: -7px; left: 0;
+    width: 14px; height: 14px; transform: rotate(45deg);
+    background: var(--moji);
   }
-  .bar-tip.show { opacity: 1; }
 
   /* ---------- スマホ横向き(アプリ定型14):高さが狭いので、操作を四隅に寄せて、まん中を広く使う ---------- */
   @media (orientation: landscape) and (max-height: 500px) {
@@ -553,14 +554,13 @@
     .nav .name { min-width: 112px; }
     .nav .name b { font-size: 18px; }
     .nav button { width: 40px; height: 40px; }
-    .bar-handle { left: auto; right: 0; transform: none; margin-right: calc(min(430px, 56%) / 2 - 14px); }
     .hint { top: calc(env(safe-area-inset-top, 0px) + 72px); }
     .hint .main { font-size: 20px; }
     body.has-notice .hint { top: calc(env(safe-area-inset-top, 0px) + 72px); }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .topbar, .nav, .zset, .notices, .bar, .bar-handle, .bar-tip, body.drawing .topbar, body.drawing .zset, body.drawing .notices, body.bars-off .nav, body.bars-off .bar { transition: none; }
+    .topbar, .nav, .zset, .notices, .bar, .tour, body.drawing .topbar, body.drawing .zset, body.drawing .notices, body.drawing .bar, body.drawing.m-hotaru .nav { transition: none; }
     .hint, .bar, .sw i, .modes, .nav, #gd, .zset, .zchip { transition: none; }
   }
   .done:focus-visible { outline: 2px solid #cfe0ff; outline-offset: 3px;
@@ -609,8 +609,15 @@
   <button type="button" id="nextBtn" aria-label="次のお手本">›</button>
 </div>
 
-<div class="bar-handle" aria-hidden="true"></div>
-<p class="bar-tip" id="barTip" aria-live="polite">いちばん下をダブルタップすると、ツールバーが戻ります</p>
+<div class="tour" id="tour" role="dialog" aria-live="polite" hidden>
+  <p class="tour-text" id="tourText"></p>
+  <div class="tour-row">
+    <span class="tour-step" id="tourStep"></span>
+    <button type="button" class="tour-skip" id="tourSkip">とじる</button>
+    <button type="button" class="tour-next" id="tourNext">次へ</button>
+  </div>
+  <span class="tour-arrow" id="tourArrow" aria-hidden="true"></span>
+</div>
 <div class="bar" id="bar" role="toolbar" aria-label="設定">
   <div class="swatches" id="swatches" role="radiogroup" aria-label="色"></div>
   <button class="opt" id="lifeBtn" type="button"><span class="k">余韻</span><span class="v"></span></button>
@@ -812,8 +819,8 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、下の HISTORY と CHANGELOG.md にも同じ版を足す
-  const APP_VERSION = '1.16.1';
-  const APP_RELEASE_DATE = '2026-11-07';
+  const APP_VERSION = '1.17.0';
+  const APP_RELEASE_DATE = '2026-11-08';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
   const FEEDBACK_URL = 'https://tally.so/r/9qL0A4';
   const FEEDBACK_APP_NAME = 'なぞり';
@@ -829,6 +836,10 @@
   // 更新履歴(アプリ定型20)。新しい版を上に足す。日付は CHANGELOG.md とそろえる。
   // 文章は使う人向けのやさしい言葉で。アップデートのお知らせ(定型05)にも、この中身を使う
   const HISTORY = [
+    { v: '1.17.0', date: '2026-11-08', notes: [
+      'はじめて使う人に、色を変えたり音を選んだりできることを、吹き出しで案内するようにしました',
+      '下のツールバーは、指を離すと上のタブと一緒に戻るようにしました',
+    ] },
     { v: '1.16.1', date: '2026-11-07', notes: [
       'iPhone を消音モード(マナーモード)にしているときは、音が鳴らないようにしました',
     ] },
@@ -2252,47 +2263,11 @@
   let downCount = 0;
   function setDrawing() { document.body.classList.toggle('drawing', downCount > 0); }
 
-  // ---- 下のツールバー:なぞると隠れ、タブの切り替えか、いちばん下のダブルタップで戻る ----
-  const BAR_TIP_KEY = 'nazori:bar-tip';
-  const barTip = document.getElementById('barTip');
-  let barTipCount = 0, barTipTimer = 0, lastBottomTap = null;
-  try { const v = parseInt(localStorage.getItem(BAR_TIP_KEY) || '0', 10); barTipCount = Number.isInteger(v) && v >= 0 ? Math.min(v, 99) : 0; } catch (e) {}
-  function hideBars() {
-    if (document.body.classList.contains('bars-off')) return;
-    document.body.classList.add('bars-off');
-    if (barTipCount < 3) {   // 最初の3回だけ、戻し方をそっと案内する
-      barTipCount++;
-      try { localStorage.setItem(BAR_TIP_KEY, String(barTipCount)); } catch (e) {}
-      clearTimeout(barTipTimer);
-      barTipTimer = setTimeout(() => {
-        if (!document.body.classList.contains('bars-off')) return;
-        barTip.classList.add('show');
-        barTipTimer = setTimeout(() => barTip.classList.remove('show'), 3500);
-      }, 1200);
-    }
-  }
-  function showBars() {
-    document.body.classList.remove('bars-off');
-    clearTimeout(barTipTimer); barTip.classList.remove('show');
-    lastBottomTap = null;
-  }
-  // いちばん下(ツールバーのあたり)を、すばやく2回タップしたか
-  function isBottomDoubleTap(e) {
-    if (!document.body.classList.contains('bars-off')) return false;
-    if (e.clientY < H - 120) { lastBottomTap = null; return false; }
-    const t = performance.now(), prev = lastBottomTap;
-    lastBottomTap = { t, x: e.clientX, y: e.clientY };
-    if (prev && t - prev.t < 400 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 60) { lastBottomTap = null; return true; }
-    return false;
-  }
-
   cv.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     unlockAudio();
-    if (isBottomDoubleTap(e)) { showBars(); return; }   // 2回目のタップでは描かない
     if (G && (G.done || !G.ready)) return;   // 完成してから次のお手本が現れきるまでは、描けない
-    hideBars();
     cancelDemo();
     hint.classList.add('gone');
     try { cv.setPointerCapture(e.pointerId); } catch (err) {}
@@ -2313,6 +2288,7 @@
       P.down = false;
       if (S.mode === 4) closeOnRelease(P, nowSec());
       downCount = Math.max(0, downCount - 1); setDrawing();
+      if (downCount === 0 && typeof maybeStartTour === 'function') maybeStartTour();
     }
   }
   cv.addEventListener('pointerup', release);
@@ -2413,7 +2389,6 @@
   });
 
   function setMode(m) {
-    showBars();   // タブを切り替えたら、ツールバーを戻す
     S.mode = m;
     S.life = S.mLife[m]; S.snd = S.mSnd[m]; applySnd();   // そのモードの初期値の余韻と音で始める
     unlockAudio();
@@ -2475,7 +2450,6 @@
     const anyOpen = !document.getElementById('zsheet').hidden || !document.getElementById('ssheet').hidden || !document.getElementById('hsheet').hidden || !document.getElementById('vsheet').hidden;
     if (!document.getElementById('vsheet').hidden) { closeHistory(); return; }
     closeZ(); closeSet();
-    if (!anyOpen) showBars();   // 画面を閉じるものがなければ、隠れたツールバーを戻す
   });
 
   /* ---------- 設定(モードごとの余韻と音の初期値) ---------- */
@@ -3027,8 +3001,49 @@
     document.getElementById('phoneBox').hidden = false;
     document.getElementById('qrUrl').textContent = APP_URL;
   }
-  // PCでは「ダブルタップ」ではなく「ダブルクリック」と案内する
-  if (IS_PC) barTip.textContent = 'いちばん下をダブルクリックすると、ツールバーが戻ります';
+
+  // ---- はじめて開いたときの案内(色と音) ----
+  // はじめて開いた人が最初になぞって指を離したあと、ツールバーの色の丸と「音」を、順に吹き出しで指し示す。一度きり
+  const TOUR_KEY = 'nazori:tour-done';
+  const tourEl = document.getElementById('tour');
+  const TOUR = [
+    { target: () => document.getElementById('swatches'), text: '色の丸を押すと、光の色を変えられます' },
+    { target: () => document.getElementById('sndBtn'), text: '「音」を押すと、ガムラン・琴・パッドなど、鳴る楽器を選べます' },
+  ];
+  let tourStep = -1, tourWanted = false;
+  try { tourWanted = !hadSavedData && !localStorage.getItem(TOUR_KEY); } catch (e) {}
+  function placeTour() {
+    if (tourStep < 0) return;
+    const r = TOUR[tourStep].target().getBoundingClientRect();
+    const w = tourEl.offsetWidth, h = tourEl.offsetHeight;
+    const cx = r.left + r.width / 2;
+    const left = clamp(cx - w / 2, 12, window.innerWidth - w - 12);
+    tourEl.style.transform = 'translate(' + Math.round(left) + 'px,' + Math.round(r.top - h - 14) + 'px)';
+    document.getElementById('tourArrow').style.left = Math.round(clamp(cx - left - 7, 14, w - 28)) + 'px';
+  }
+  function showTourStep(i) {
+    tourStep = i;
+    document.getElementById('tourText').textContent = TOUR[i].text;
+    document.getElementById('tourStep').textContent = (i + 1) + ' / ' + TOUR.length;
+    document.getElementById('tourNext').textContent = i === TOUR.length - 1 ? 'わかった' : '次へ';
+    tourEl.hidden = false;
+    placeTour();
+  }
+  function endTour() {
+    tourStep = -1; tourEl.hidden = true;
+    try { localStorage.setItem(TOUR_KEY, '1'); } catch (e) {}
+  }
+  document.getElementById('tourNext').addEventListener('click', () => {
+    if (tourStep < TOUR.length - 1) showTourStep(tourStep + 1); else endTour();
+  });
+  document.getElementById('tourSkip').addEventListener('click', endTour);
+  window.addEventListener('resize', () => requestAnimationFrame(placeTour));
+  // 最初の一筆のあと、ツールバーが戻ったころに出す
+  function maybeStartTour() {
+    if (!tourWanted || tourStep >= 0) return;
+    tourWanted = false;
+    setTimeout(() => { if (downCount === 0 && document.getElementById('ssheet').hidden) showTourStep(0); else tourWanted = true; }, 1300);
+  }
 
   // ---- 友だちにこのアプリを教える ----
   const shareTa = document.getElementById('shareText');
