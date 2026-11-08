@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Rz+fnjcL570tLuRs5ii81nfWJ5tjis6hs4cpw1AKAkc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-W+YFiaGC60uAl8O/r40ifGkyBoqucfRpXHHuI5H/iSk='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- 夜空のアプリなので、配色はダークだけ。Brave のナイトモードなどの強制ダークで色が崩れないよう、自分の配色であることを伝える(アプリ定型03) -->
@@ -213,6 +213,9 @@
   }
   .newver-bar { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; font-weight: 700; }
   .newver-bar span { flex: 1; }
+  .newver-bar { flex-wrap: wrap; }
+  .newver-bar .nv-notes { flex-basis: 100%; margin: 0 8px 4px 0; padding-left: 18px; font-weight: 500; font-size: 12.5px; }
+  .upd-notes { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: var(--moji-usui); }
   .newver-bar button, .update-btn {
     min-height: 40px; padding: 0 14px;
     border: 0; border-radius: 12px;
@@ -674,6 +677,7 @@
       <p class="snote">ホーム画面のアプリは、閉じても裏で止まっているだけで、自動では新しくなりません。開いたときに最新版を確認しますが、すぐ知りたいときはここで確認できます。</p>
       <button class="update-btn" id="updCheckBtn" type="button">更新を確認</button>
       <p class="update-msg" id="updMsg" aria-live="polite"></p>
+      <ul class="upd-notes" id="updNotes" hidden></ul>
       <button class="update-btn hist-btn" id="histBtn" type="button">更新履歴</button>
     </div>
 
@@ -820,7 +824,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、下の HISTORY と CHANGELOG.md にも同じ版を足す
-  const APP_VERSION = '1.17.1';
+  const APP_VERSION = '1.18.0';
   const APP_RELEASE_DATE = '2026-11-08';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
   const FEEDBACK_URL = 'https://tally.so/r/9qL0A4';
@@ -837,6 +841,9 @@
   // 更新履歴(アプリ定型20)。新しい版を上に足す。日付は CHANGELOG.md とそろえる。
   // 文章は使う人向けのやさしい言葉で。アップデートのお知らせ(定型05)にも、この中身を使う
   const HISTORY = [
+    { v: '1.18.0', date: '2026-11-08', notes: [
+      '「新しいバージョンがあります」のお知らせに、何が変わるかも表示するようにしました',
+    ] },
     { v: '1.17.1', date: '2026-11-08', notes: [
       'はじめての案内を、モード → なぞる色 → 音色 の3つにしました。それぞれの場所を吹き出しで指します',
     ] },
@@ -2566,10 +2573,35 @@
 
   let newVersion = null;
   // 公開中の index.html を読み、そこに書かれたバージョンを取り出す
+  // 公開中のページから、最新の版の番号と、今の版より新しい版の変更内容(新しい順・最大3版・6行まで)を読み取る
+  // 読み取った文は textContent でしか表示しない。長さと行数にも上限をかける
+  let newNotes = [];
+  function parseNewNotes(t) {
+    const out = [];
+    const re = /\{ v: '(\d+\.\d+\.\d+)', date: '[\d-]+', notes: \[([\s\S]*?)\] \}/g;
+    let m, vers = 0;
+    while ((m = re.exec(t)) && vers < 3 && out.length < 6) {
+      if (cmpVersion(m[1], APP_VERSION) <= 0) break;
+      vers++;
+      const sre = /'((?:[^'\\\n]|\\.){1,200})'/g; let n;
+      while ((n = sre.exec(m[2])) && out.length < 6) out.push(n[1].replace(/\\(.)/g, '$1'));
+    }
+    return out;
+  }
   function fetchLatestVersion() {
     return fetch('index.html?check=' + Date.now(), { cache: 'no-store' })
       .then((res) => (res.ok ? res.text() : ''))
-      .then((t) => { const m = /const APP_VERSION = '(\d+\.\d+\.\d+)'/.exec(t || ''); return m ? m[1] : null; });
+      .then((t) => {
+        const m = /const APP_VERSION = '(\d+\.\d+\.\d+)'/.exec(t || '');
+        if (!m) return null;
+        try { newNotes = cmpVersion(m[1], APP_VERSION) > 0 ? parseNewNotes(t) : []; } catch (e) { newNotes = []; }
+        return m[1];
+      });
+  }
+  function notesList(cls) {
+    const ul = el('ul', cls);
+    newNotes.forEach((n) => ul.append(el('li', '', n)));
+    return ul;
   }
   let lastUpdateCheck = 0;
   function checkForUpdate() {
@@ -2598,6 +2630,7 @@
       const btn = el('button', '', '再読み込み'); btn.type = 'button';
       btn.addEventListener('click', hardReload);
       bar.append(btn);
+      if (newNotes.length) bar.append(notesList('nv-notes'));   // 新しい版で何が変わるか
       noticesEl.append(bar);
     }
     if (seenVersion !== APP_VERSION) {   // アップデートしたばかり
@@ -2680,6 +2713,10 @@
       updState === 'latest' ? '✓ 最新版です(v' + APP_VERSION + ')' :
       updState === 'error' ? '確認できませんでした。ネットにつながっているか確かめて、もう一度お試しください。' :
       updState === 'unsupported' ? 'この画面(プレビューなど)では確認できません。公開版のアプリで確認してください。' : '';
+    const un = document.getElementById('updNotes');
+    un.textContent = '';
+    if (updState === 'new') newNotes.forEach((n) => un.append(el('li', '', n)));
+    un.hidden = !(updState === 'new' && newNotes.length);
   }
   updCheckBtn.addEventListener('click', () => {
     if (updState === 'new') { hardReload(); return; }
