@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <!-- 注意:下の script-src の sha256 は、ページ内のスクリプトの中身から計算した値です。スクリプトを1文字でも書き換えたら必ず計算し直すこと(合わないとアプリが動かなくなります)。計算方法は README.md -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-W+YFiaGC60uAl8O/r40ifGkyBoqucfRpXHHuI5H/iSk='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7NgAxpiqiVmDV98EbgE/HdQdRhq6ppE5DdrNk4l3Te0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- 夜空のアプリなので、配色はダークだけ。Brave のナイトモードなどの強制ダークで色が崩れないよう、自分の配色であることを伝える(アプリ定型03) -->
 <meta name="color-scheme" content="only dark">
 <meta name="darkreader-lock">
 <title>なぞり</title>
-<link rel="manifest" href="manifest.webmanifest">
+<!-- manifest はスマホ・タブレットのときだけ、スクリプトで読み込む(PCのブラウザに「インストール」の案内を出させないため) -->
 <meta name="theme-color" content="#070d1f">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -798,6 +798,17 @@
 (() => {
   'use strict';
 
+  // スマホに合わせて作ったアプリなので、ホーム画面に追加できるのはスマホ・タブレットだけ。
+  // PCでは manifest を読み込まず、Chrome・Edge などがアドレスバーなどに出す「アプリをインストール」の案内を出させない
+  (function linkManifest() {
+    const ua = navigator.userAgent || '';
+    const mobile = /iPhone|iPad|iPod|Android/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (!mobile) return;
+    const l = document.createElement('link');
+    l.rel = 'manifest'; l.href = 'manifest.webmanifest';
+    document.head.append(l);
+  })();
+
   /* ---------- 設定値 ---------- */
   const PALETTES = [
     { name: '夜明け', colors: ['#4f7dff', '#9a6bff', '#ff6fa8', '#ffb56b'] },
@@ -824,7 +835,7 @@
 
   /* ---------- バージョン ---------- */
   // セマンティックバージョン(メジャー.マイナー.パッチ)。更新のたびに上げ、下の HISTORY と CHANGELOG.md にも同じ版を足す
-  const APP_VERSION = '1.18.0';
+  const APP_VERSION = '1.18.1';
   const APP_RELEASE_DATE = '2026-11-08';
   // 感想フォーム(Tally。ほかのアプリと共通で、?app= でこのアプリがあらかじめ選ばれる)
   const FEEDBACK_URL = 'https://tally.so/r/9qL0A4';
@@ -841,6 +852,9 @@
   // 更新履歴(アプリ定型20)。新しい版を上に足す。日付は CHANGELOG.md とそろえる。
   // 文章は使う人向けのやさしい言葉で。アップデートのお知らせ(定型05)にも、この中身を使う
   const HISTORY = [
+    { v: '1.18.1', date: '2026-11-08', notes: [
+      'パソコンで開いたときは、ブラウザの「アプリをインストール」の案内が出ないようにしました(スマホ向けのアプリのため)',
+    ] },
     { v: '1.18.0', date: '2026-11-08', notes: [
       '「新しいバージョンがあります」のお知らせに、何が変わるかも表示するようにしました',
     ] },
